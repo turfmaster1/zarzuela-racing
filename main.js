@@ -239,7 +239,40 @@ function sorted(){return [...runners].sort((a,b)=>b.distance-a.distance||(a.time
 function updateRank(){if(!race||!runners.length)return;const s=sorted(),lead=s[0];$('metersLeft').textContent=`${Math.max(0,Math.ceil(race.distance-lead.distance)).toLocaleString('es-ES')} m`;$('rankingRows').innerHTML=s.map((r,i)=>`<div class="rank-row"><div class="rank-pos">${i+1}</div><div class="rank-name"><b>${r.horse.raceNumber}. ${r.horse.name}</b><span>${r.horse.assignedJockey}</span></div><div class="rank-gap">${i?`-${Math.max(0,lead.distance-r.distance).toFixed(1)} m`:'LÍDER'}</div></div>`).join('');if(race.distance-lead.distance<700)$('commentary').textContent=race.distance-lead.distance<250?'¡Últimos 250 metros! Se abre la lucha por la victoria.':'Entrando en la fase decisiva: el grupo se prepara para el remate.';}
 function setCameraFov(v){if(Math.abs(camera.fov-v)>.1){camera.fov=v;camera.updateProjectionMatrix();}}
 function updateCamera(dt){if(!runners.length)return;const s=sorted(),lead=s[0],center=new THREE.Vector3();s.forEach(r=>center.add(r.root.position));center.divideScalar(s.length);const f=THREE.MathUtils.clamp(lead.distance/race.distance,0,1),tan=route.getTangentAtFraction(f),side=new THREE.Vector3(tan.z,0,-tan.x).normalize(),remaining=race.distance-lead.distance;let desired,target=center.clone();if(state.cameraMode===0){const final=remaining<500;setCameraFov(final?34:37);desired=center.clone().addScaledVector(side,final?20:27).addScaledVector(tan,final?-3:-7);desired.y=final?6.2:9.8;target.addScaledVector(tan,final?3:5);target.y=2;}else if(state.cameraMode===1){setCameraFov(48);desired=center.clone();desired.y=72;target.y=0;}else if(state.cameraMode===2){setCameraFov(38);desired=center.clone().addScaledVector(side,16).addScaledVector(tan,-4);desired.y=5;target.addScaledVector(tan,10);target.y=1.8;}else if(state.cameraMode===3){setCameraFov(33);desired=lead.root.position.clone().addScaledVector(side,8).addScaledVector(tan,-3);desired.y=3.1;target=lead.root.position.clone().addScaledVector(tan,4.5);target.y=1.7;}else{setCameraFov(30);desired=new THREE.Vector3(FINISH_X,4.8,BOTTOM_Z+43);target=new THREE.Vector3(FINISH_X,1.8,BOTTOM_Z);}camera.position.lerp(desired,1-Math.exp(-5.2*dt));camera.lookAt(target);}
-function results(){const rr=[...finishOrder],winner=rr[0]?.time||0;$('resultTitle').textContent=race.name;$('resultSubtitle').textContent=`${race.distance.toLocaleString('es-ES')} m · ${race.venue}`;$('photoFinish').src=snapshot;$('podium').innerHTML=rr.slice(0,3).map((r,i)=>`<div class="podium-card"><span>${i+1}º</span><b>${r.horse.raceNumber}. ${r.horse.name}</b><small>${r.horse.assignedJockey}</small></div>`).join('');$('classification').innerHTML=rr.map((r,i)=>`<div class="class-row"><strong>${i+1}º</strong><div><b>${r.horse.raceNumber}. ${r.horse.name}</b><br><span>${r.horse.stable}</span></div><span>${r.horse.assignedJockey}</span><b>${i?`+${(r.time-winner).toFixed(2)}s`:r.time.toFixed(2)+'s'}</b></div>`).join('');show('resultsScreen');}
+function createRaceMemoryCard(r,winnerHorse){
+  const c=document.createElement('canvas');c.width=1200;c.height=430;const x=c.getContext('2d');
+  const sky=x.createLinearGradient(0,0,0,430);sky.addColorStop(0,'#85bfdc');sky.addColorStop(.55,'#c9bd8d');sky.addColorStop(1,'#245f3c');x.fillStyle=sky;x.fillRect(0,0,1200,430);
+  x.fillStyle='#2b7147';x.fillRect(0,255,1200,175);
+  x.strokeStyle='rgba(255,255,255,.92)';x.lineWidth=6;x.beginPath();x.moveTo(0,305);x.bezierCurveTo(310,270,760,274,1200,320);x.stroke();
+  x.strokeStyle='rgba(255,255,255,.65)';x.lineWidth=3;x.beginPath();x.moveTo(0,335);x.bezierCurveTo(310,300,760,304,1200,350);x.stroke();
+  x.fillStyle='rgba(4,13,9,.66)';x.fillRect(0,0,1200,430);
+  x.fillStyle='#dfbf74';x.font='900 24px Arial';x.fillText('ZARZUELA RACING · GRAN PREMIO',52,61);
+  x.fillStyle='#fff';x.font='900 52px Georgia';x.fillText(r.name.toUpperCase(),52,126);
+  x.fillStyle='#d7e1da';x.font='600 24px Arial';x.fillText(r.distance.toLocaleString('es-ES')+' m · '+r.venue,52,172);
+  x.fillStyle='#dfbf74';x.font='900 21px Arial';x.fillText('GANADOR',52,274);
+  x.fillStyle='#fff';x.font='900 48px Georgia';x.fillText(winnerHorse?.name||'',52,328);
+  x.fillStyle='#d7e1da';x.font='600 21px Arial';x.fillText(winnerHorse?.assignedJockey||'',52,362);
+  return c.toDataURL('image/jpeg',.9);
+}
+function results(){
+  const rr=[...finishOrder],winner=rr[0]?.time||0;
+  $('resultTitle').textContent=race.name;
+  $('resultSubtitle').textContent=race.distance.toLocaleString('es-ES')+' m · '+race.venue;
+  $('photoFinish').src=snapshot;
+  const panel=document.querySelector('.results-panel');
+  let memory=$('raceMemory');
+  if(!memory){memory=document.createElement('div');memory.id='raceMemory';panel.prepend(memory);}
+  if(state.mode==='champ'){
+    memory.style.cssText='height:170px;border-radius:16px;margin-bottom:14px;background-size:cover;background-position:center;border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 -70px 80px rgba(0,0,0,.25)';
+    memory.style.backgroundImage='url("'+createRaceMemoryCard(race,rr[0]?.horse)+'")';
+    memory.style.display='block';
+  }else{
+    memory.style.display='none';
+  }
+  $('podium').innerHTML=rr.slice(0,3).map((r,i)=>`<div class="podium-card"><span>${i+1}º</span><b>${r.horse.raceNumber}. ${r.horse.name}</b><small>${r.horse.assignedJockey}</small></div>`).join('');
+  $('classification').innerHTML=rr.map((r,i)=>`<div class="class-row"><strong>${i+1}º</strong><div><b>${r.horse.raceNumber}. ${r.horse.name}</b><br><span>${r.horse.stable}</span></div><span>${r.horse.assignedJockey}</span><b>${i?`+${(r.time-winner).toFixed(2)}s`:r.time.toFixed(2)+'s'}</b></div>`).join('');
+  show('resultsScreen');
+}
 
 $('confirmBtn').onclick=()=>{const field=horses.filter(h=>state.selected.has(h.id));if(field.length>=6)startRace(field,currentRace());};
 $('speedBtn').onclick=()=>{state.raceSpeed=state.raceSpeed===1?1.5:state.raceSpeed===1.5?2:1;$('speedBtn').textContent='x'+state.raceSpeed;};
