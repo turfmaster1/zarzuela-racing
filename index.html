@@ -29,11 +29,8 @@
     <section id="resultsScreen" class="screen"><div class="shell"><header class="section-header"><div><div class="eyebrow">Resultado de la simulación</div><h2 id="resultTitle">Clasificación</h2><p id="resultSubtitle"></p></div><button class="ghost" id="menuFromResults">Menú principal</button></header><div class="results-layout"><div class="photo-panel"><img id="photoFinish" alt="Foto finish de la carrera 3D" /><div class="photo-caption">FOTO FINISH · SIMULACIÓN</div></div><div class="results-panel"><div id="podium" class="podium"></div><div id="classification" class="classification"></div><div class="footer-actions left"><button class="primary" id="repeatBtn">Repetir carrera</button><button class="secondary" id="anotherBtn">Elegir otra prueba</button></div></div></div></div></section>
   </div>
 
-  <!-- Hotfix: el bucle 3D usa startAngle fuera de startRace().
-       Lo definimos globalmente antes de cargar el módulo y lo actualizamos
-       según la distancia seleccionada. -->
   <script>
-    globalThis.startAngle = 0;
+    var startAngle = 0;
     document.addEventListener('click', function (event) {
       const button = event.target.closest && event.target.closest('#confirmBtn');
       if (!button) return;
@@ -42,9 +39,9 @@
       const match = text.match(/([0-9.]+)\s*m/i);
       const fallback = Number(document.getElementById('freeDistance')?.value || 1600);
       const distance = match ? Number(match[1].replace(/\./g, '')) : fallback;
-      globalThis.startAngle = -(distance / 1800) * Math.PI * 2;
+      startAngle = -(distance / 1800) * Math.PI * 2;
     }, true);
   </script>
-  <script type="module" src="./main.js?v=2"></script>
+  <script type="module" src="./main.js?v=3"></script>
 </body>
 </html>
