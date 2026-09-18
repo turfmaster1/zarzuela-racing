@@ -291,7 +291,7 @@ function makeRunner(h){
     for(const mat of mats){
       const name=(mat?.name||'').toLowerCase();
       const horseLeg=/leg|limb|fetlock|pastern|cannon|sock/.test(name+' '+objectName);
-      if(horseLeg||name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x171310);mat.map=null;mat.needsUpdate=true;}
+      if(name==='horse_hooves'||horseLeg||name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x050505);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.95;mat.metalness=0;mat.needsUpdate=true;}
       else if(name.includes('horse.body.pattern')){setMaterialColor(mat,h.coat);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.9;mat.metalness=0;mat.needsUpdate=true;}
       else if(name.includes('jockey_silk_main')||name.includes('jockey_silk_primary')){mat.map=jockeySilkTexture;setMaterialColor(mat,0xffffff);mat.needsUpdate=true;}
       else if(name.includes('jockey_silk_secondary'))setMaterialColor(mat,h.id==='safaga'?h.silk:h.accent);
