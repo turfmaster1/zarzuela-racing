@@ -367,6 +367,7 @@ function updateRaceAI(r,dt,live,leader){
   const remaining=race.distance-r.distance;
   const insideSign=interiorSignFor(r);
   const outsideSign=-insideSign;
+  const railTarget=railTargetFor(r);
 
   if(r.nextDecision<=0){
     const blockers=runners
@@ -377,18 +378,19 @@ function updateRaceAI(r,dt,live,leader){
     const settled=Math.abs(r.targetLateral-r.lateral)<.28;
     if(r.laneLock<=0&&settled){
       if(r.blocked){
-        const outLane=r.lateral+outsideSign*2.45;
         const inLane=r.lateral+insideSign*2.35;
-        const outFree=laneFree(r,outLane,8.2);
+        const outLane=r.lateral+outsideSign*2.45;
         const inFree=laneFree(r,inLane,8.2);
+        const outFree=laneFree(r,outLane,8.2);
 
-        if(outFree){
-          r.targetLateral=outLane;
-          r.maneuver='outside-pass';
-          r.laneLock=3.0+Math.random()*.8;
-        }else if(inFree){
+        // Si aparece hueco por dentro, lo prioriza. Solo se abre si el interior está cerrado.
+        if(inFree){
           r.targetLateral=inLane;
           r.maneuver='inside-pass';
+          r.laneLock=3.0+Math.random()*.8;
+        }else if(outFree){
+          r.targetLateral=outLane;
+          r.maneuver='outside-pass';
           r.laneLock=3.0+Math.random()*.8;
         }else{
           r.targetLateral=r.lateral;
@@ -396,18 +398,35 @@ function updateRaceAI(r,dt,live,leader){
           r.laneLock=1.0+Math.random()*.35;
         }
       }else{
-        // Si no hay tráfico, mantiene su línea. Evita fuera-dentro-fuera continuo.
-        r.targetLateral=r.lateral;
-        r.maneuver='hold-line';
-        r.laneLock=1.1+Math.random()*.45;
+        const metresFromRail=Math.abs(r.lateral-railTarget);
+        const settledIntoRace=r.distance>Math.min(120,race.distance*.06);
+        const canSeekRail=settledIntoRace&&remaining>180&&metresFromRail>2.2;
+
+        if(canSeekRail){
+          // Acercamiento progresivo a los palos: un paso pequeño y comprometido, nunca zigzag.
+          const inwardLane=stepToward(r.lateral,railTarget,1.20);
+          if(laneFree(r,inwardLane,7.6)){
+            r.targetLateral=inwardLane;
+            r.maneuver='seek-rail';
+            r.laneLock=1.9+Math.random()*.55;
+          }else{
+            r.targetLateral=r.lateral;
+            r.maneuver='hold-line';
+            r.laneLock=1.2+Math.random()*.40;
+          }
+        }else{
+          r.targetLateral=r.lateral;
+          r.maneuver='hold-line';
+          r.laneLock=1.2+Math.random()*.40;
+        }
       }
     }
 
-    r.nextDecision=.70+Math.random()*.45;
+    r.nextDecision=.75+Math.random()*.45;
   }
 
-  // Cambio de calle más progresivo y, sobre todo, sin invertir la maniobra a mitad.
-  const laneBlend=1-Math.exp(-.92*scaledDt);
+  // Cambio de calle progresivo y sin invertir la maniobra a mitad.
+  const laneBlend=1-Math.exp(-.88*scaledDt);
   r.lateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
 
   r.effort=effortFor(r);
