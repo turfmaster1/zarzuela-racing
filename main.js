@@ -22,30 +22,31 @@ const JOCKEYS = [
 ];
 
 const horses = [
-  ['safaga','Safaga','Asoc. La Toledana–Becares','G. Trolley de Prévaux','intermediate',92,93,95,1900,2450,0x241815,'#08090a','#20c9c3','chestcross'],
-  ['estraunza','Estraunza','Becares','A. Gutiérrez V.','stayer',92,98,93,2250,2850,0x8b4325,'#f05a18','#1746b8','stripes'],
-  ['sirjan','Sirjan','Cum Laude Racing','J. Gelabert','stayer',92,99,91,2300,3100,0x2a1a17,'#1746b8','#f05a18','stripes'],
-  ['fortun','Fortun','La Toledana','B. Fayos','intermediate',94,94,92,1800,2450,0x6a3421,'#090a0b','#090a0b','solid'],
-  ['entrecopas','Entre Copas','Cuadra África','J. L. Martínez','stayer',89,100,86,2400,4000,0x9c5731,'#aa2431','#f2d66a','band'],
-  ['amedeo','Amedeo Modigliani','Yeguada Rocío','V. Janáček','miler',98,84,97,1450,1800,0x4b2b20,'#f5f5ef','#0d5c3d','stars'],
-  ['frine','Friné','Duque de Alburquerque','J. Grosjean','stayer',94,97,94,2200,2700,0x8b8c88,'#ededeb','#722338','band'],
-  ['espoir','Espoir Avenir (FR)','Alain Maubert','E. Corallo','stayer',95,97,94,2300,2850,0x6d625a,'#235a9d','#d53838','diagonal'],
-  ['warofdance','War of Dance','Peques','R. N. Valle','stayer',94,96,93,2300,2650,0x3d241c,'#f07b26','#12a4a4','quarters'],
-  ['coetzee','Coetzee','Alex y Sofía','R. N. Valle','stayer',93,96,92,2300,2750,0x543126,'#203d87','#eadc61','band'],
-  ['naranco','Naranco','Yeguada Rocío','V. Janáček','stayer',91,95,90,2200,2650,0x35231d,'#f5f5ef','#0d5c3d','stars'],
-  ['tetuan','Tetuan','Yeguada Rocío','V. Janáček','stayer',90,96,89,2200,2850,0x2e201b,'#f5f5ef','#0d5c3d','stars'],
-  ['shackleton','Shackleton','Yeguada Rocío','I. Melgarejo','stayer',90,97,87,2300,3000,0x87482a,'#f5f5ef','#0d5c3d','stars'],
-  ['pamplona','Pamplona','Yeguada Rocío','V. Janáček','stayer',91,95,90,2200,2850,0x4b2e24,'#f5f5ef','#0d5c3d','stars'],
-  ['ifnotnow','If Not Now','Yeguada Rocío','V. Janáček','intermediate',93,92,93,1850,2350,0xa05b34,'#f5f5ef','#0d5c3d','stars'],
-  ['thegame','The Game','Cielo de Madrid','R. Sousa','stayer',93,95,92,2150,2650,0x452a22,'#72c9d7','#11181a','quarters'],
-  ['mediastorm','Media Storm','Best Horse','B. Fayos','stayer',92,96,90,2300,2750,0x6a3c28,'#17307e','#ffffff','band'],
-  ['elcaney','El Caney','Santa Bárbara','A. Gutiérrez V.','stayer',91,96,90,2250,2850,0x37231c,'#f2d64e','#168154','diagonal'],
-  ['kingjungle','King of Jungle','Yeguada Rocío','V. Janáček','sprinter',99,78,99,1000,1400,0x9a9992,'#f5f5ef','#0d5c3d','stars'],
+  ['safaga','Safaga','Asoc. La Toledana–Becares','G. Trolley de Prévaux','intermediate',92,93,95,1900,2450,0x241815,'#08090a','#20c9c3','chestcross',{face:'star',socks:['RR']}],
+  ['estraunza','Estraunza','Becares','A. Gutiérrez V.','stayer',92,98,93,2250,2850,0x8b4325,'#f05a18','#1746b8','stripes',{face:'none',socks:[]}],
+  ['sirjan','Sirjan','Cum Laude Racing','J. Gelabert','stayer',92,99,91,2300,3100,0x211512,'#1746b8','#f05a18','stripes',{face:'blaze',socks:[]}],
+  ['elsokhna','El Sokhna','Becares','A. Gutiérrez V.','intermediate',91,93,92,1800,2400,0xa65a32,'#f05a18','#1746b8','stripes',{face:'stripe',socks:[]}],
+  ['fortun','Fortun','La Toledana','B. Fayos','intermediate',94,94,92,1800,2450,0x6a3421,'#090a0b','#090a0b','solid',{face:'none',socks:[]}],
+  ['entrecopas','Entre Copas','Cuadra África','J. L. Martínez','stayer',89,100,86,2400,4000,0x9c5731,'#aa2431','#f2d66a','band',{face:'none',socks:[]}],
+  ['amedeo','Amedeo Modigliani','Yeguada Rocío','V. Janáček','miler',98,84,97,1450,1800,0x4b2b20,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
+  ['frine','Friné','Duque de Alburquerque','J. Grosjean','stayer',94,97,94,2200,2700,0x8b8c88,'#ededeb','#722338','band',{face:'none',socks:[]}],
+  ['espoir','Espoir Avenir (FR)','Alain Maubert','E. Corallo','stayer',95,97,94,2300,2850,0x6d625a,'#235a9d','#d53838','diagonal',{face:'none',socks:[]}],
+  ['warofdance','War of Dance','Peques','R. N. Valle','stayer',94,96,93,2300,2650,0x3d241c,'#f07b26','#12a4a4','quarters',{face:'none',socks:[]}],
+  ['coetzee','Coetzee','Alex y Sofía','R. N. Valle','stayer',93,96,92,2300,2750,0x543126,'#203d87','#eadc61','band',{face:'none',socks:[]}],
+  ['naranco','Naranco','Yeguada Rocío','V. Janáček','stayer',91,95,90,2200,2650,0x35231d,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
+  ['tetuan','Tetuan','Yeguada Rocío','V. Janáček','stayer',90,96,89,2200,2850,0x2e201b,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
+  ['shackleton','Shackleton','Yeguada Rocío','I. Melgarejo','stayer',90,97,87,2300,3000,0x87482a,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
+  ['pamplona','Pamplona','Yeguada Rocío','V. Janáček','stayer',91,95,90,2200,2850,0x4b2e24,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
+  ['ifnotnow','If Not Now','Yeguada Rocío','V. Janáček','intermediate',93,92,93,1850,2350,0xa05b34,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
+  ['thegame','The Game','Cielo de Madrid','R. Sousa','stayer',93,95,92,2150,2650,0x452a22,'#72c9d7','#11181a','quarters',{face:'none',socks:[]}],
+  ['mediastorm','Media Storm','Best Horse','B. Fayos','stayer',92,96,90,2300,2750,0x6a3c28,'#17307e','#ffffff','band',{face:'none',socks:[]}],
+  ['elcaney','El Caney','Santa Bárbara','A. Gutiérrez V.','stayer',91,96,90,2250,2850,0x37231c,'#f2d64e','#168154','diagonal',{face:'none',socks:[]}],
+  ['kingjungle','King of Jungle','Yeguada Rocío','V. Janáček','sprinter',99,78,99,1000,1400,0x9a9992,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
   ['samedi','Samedi Rien','Yeguada Rocío','V. Janáček','miler',97,85,96,1400,1800,0x603627,'#f5f5ef','#0d5c3d','stars']
 ].map((x,i)=>({
   id:x[0],name:x[1],stable:x[2],preferredJockey:x[3],specialty:x[4],
   speed:x[5],stamina:x[6],accel:x[7],best:[x[8],x[9]],coat:x[10],
-  silk:x[11],accent:x[12],pattern:x[13],catalogNumber:i+1
+  silk:x[11],accent:x[12],pattern:x[13],markings:x[14]||{face:'none',socks:[]},catalogNumber:i+1
 }));
 
 const races = [
@@ -236,6 +237,44 @@ function addRaceNumberToSaddle(root,model,h){
     root.add(plate);
   }
 }
+function addHorseMarkings(root,h,box,size){
+  const markings=h.markings||{face:'none',socks:[]};
+  if(markings.face==='none'&&(!markings.socks||!markings.socks.length))return;
+  const white=new THREE.MeshLambertMaterial({color:0xf6f5ee});
+  const center=new THREE.Vector3();box.getCenter(center);
+  const frontZ=box.max.z-.035;
+  if(markings.face&&markings.face!=='none'){
+    const faceGroup=new THREE.Group();
+    let width=.10,height=.20;
+    if(markings.face==='blaze'){width=.16;height=.46;}
+    else if(markings.face==='stripe'){width=.085;height=.36;}
+    else if(markings.face==='star'){width=.13;height=.13;}
+    const patch=new THREE.Mesh(new THREE.PlaneGeometry(width,height),white);
+    patch.position.set(center.x,box.min.y+size.y*.80,frontZ);
+    patch.rotation.x=-.10;
+    faceGroup.add(patch);
+    if(markings.face==='star'){
+      const star=new THREE.Mesh(new THREE.CircleGeometry(width*.58,5),white);
+      star.position.set(center.x,box.min.y+size.y*.80,frontZ+.004);
+      star.rotation.z=Math.PI/5;
+      faceGroup.add(star);
+      patch.visible=false;
+    }
+    root.add(faceGroup);
+  }
+  const sockMap={
+    LF:[ size.x*.18,box.max.z-size.z*.27],
+    RF:[-size.x*.18,box.max.z-size.z*.27],
+    LR:[ size.x*.18,box.min.z+size.z*.24],
+    RR:[-size.x*.18,box.min.z+size.z*.24]
+  };
+  (markings.socks||[]).forEach(key=>{
+    const p=sockMap[key];if(!p)return;
+    const sock=new THREE.Mesh(new THREE.CylinderGeometry(Math.max(.035,size.x*.035),Math.max(.038,size.x*.040),Math.max(.16,size.y*.16),8),white);
+    sock.position.set(p[0],box.min.y+Math.max(.09,size.y*.085),p[1]);
+    root.add(sock);
+  });
+}
 function makeRunner(h){
   const root=new THREE.Group(),model=SkeletonUtils.clone(horseTemplate),jockeySilkTexture=silkTexture(h);
   root.add(model);
@@ -266,6 +305,7 @@ function makeRunner(h){
   model.updateMatrixWorld(true);
   box=new THREE.Box3().setFromObject(model);
   const size=new THREE.Vector3();box.getSize(size);
+  addHorseMarkings(root,h,box,size);
   addRaceNumberToSaddle(root,model,h);
   const mixer=new THREE.AnimationMixer(model),actions=[];
   const gallop=mixer.clipAction(horseClips['horse.gallop']);gallop.reset().play();actions.push(gallop);
