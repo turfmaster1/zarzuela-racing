@@ -23,7 +23,7 @@ const JOCKEYS = [
 
 const horses = [
   ['safaga','Safaga','Asoc. La Toledana–Becares','G. Trolley de Prévaux','intermediate',92,93,95,1900,2450,0x3b241d,'#111111','#20c9c3','cross'],
-  ['estraunza','Estraunza','Becares','A. Gutiérrez V.','stayer',92,98,93,2250,2850,0x6b351f,'#f05a18','#1746b8','diagonal'],
+  ['estraunza','Estraunza','Becares','A. Gutiérrez V.','stayer',92,98,93,2250,2850,0x6b351f,'#f05a18','#1746b8','stripes'],
   ['sirjan','Sirjan','Cum Laude Racing','J. Gelabert','stayer',92,99,91,2300,3100,0x281811,'#17633f','#f7f7f2','band'],
   ['fortun','Fortun','La Toledana','B. Fayos','intermediate',94,94,92,1800,2450,0x7a3f24,'#101214','#39c8ca','cross'],
   ['entrecopas','Entre Copas','Cuadra África','J. L. Martínez','stayer',89,100,86,2400,4000,0x8a4b2b,'#aa2431','#f2d66a','band'],
@@ -76,7 +76,7 @@ function ability(h,d){const long=THREE.MathUtils.clamp((d-1200)/1800,0,1);return
 function rating(h,d){return ability(h,d)*distanceFit(h,d);}
 function currentRace(){return state.mode==='champ'?state.selectedRace:{id:'free',name:'Carrera Libre',distance:+$('freeDistance').value,venue:'Hipódromo de La Zarzuela · Madrid',favors:'Variable'};}
 
-function silkPreview(h){const bg=h.pattern==='stars'?`radial-gradient(circle at 30% 30%,${h.accent} 0 2px,transparent 2.5px),radial-gradient(circle at 72% 68%,${h.accent} 0 2px,transparent 2.5px),${h.silk}`:`linear-gradient(135deg,${h.silk} 0 43%,${h.accent} 44% 60%,${h.silk} 61%)`;return `<div style="width:30px;height:30px;border-radius:50%;border:2px solid ${h.accent};background:${bg}"></div>`;}
+function silkPreview(h){let bg;if(h.pattern==='stars')bg=`radial-gradient(circle at 30% 30%,${h.accent} 0 2px,transparent 2.5px),radial-gradient(circle at 72% 68%,${h.accent} 0 2px,transparent 2.5px),${h.silk}`;else if(h.pattern==='stripes')bg=`repeating-linear-gradient(90deg,${h.silk} 0 5px,${h.accent} 5px 10px)`;else bg=`linear-gradient(135deg,${h.silk} 0 43%,${h.accent} 44% 60%,${h.silk} 61%)`;return `<div style="width:30px;height:30px;border-radius:50%;border:2px solid ${h.accent};background:${bg}"></div>`;}
 function renderRaces(){$('raceGrid').innerHTML=races.map(r=>`<article class="race-card ${state.selectedRace?.id===r.id?'selected':''}" data-race="${r.id}"><div class="eyebrow">${r.distance.toLocaleString('es-ES')} m</div><h3>${r.name}</h3><p>${r.venue}</p><div class="race-meta"><span class="pill gold">Favorece ${r.favors}</span></div></article>`).join('');document.querySelectorAll('[data-race]').forEach(c=>c.onclick=()=>{state.selectedRace=races.find(r=>r.id===c.dataset.race);$('chooseRaceBtn').disabled=false;renderRaces();});}
 function renderHorses(){const d=currentRace().distance;$('horseGrid').innerHTML=horses.map(h=>{const sel=state.selected.has(h.id),fit=Math.round(distanceFit(h,d)*100);return `<article class="horse-card ${sel?'selected':''}" data-horse="${h.id}"><div class="select-mark">${sel?'✓':'+'}</div><div style="display:flex;gap:10px;align-items:center">${silkPreview(h)}<div><div class="horse-number">Nº ${h.catalogNumber} · ${SPECIALTY[h.specialty].label}</div><h3>${h.name}</h3></div></div><div class="horse-sub">${h.stable}<br>${h.preferredJockey}</div><div class="fitbar"><span style="width:${Math.min(100,fit)}%"></span></div><div class="stats"><div>Velocidad<b>${h.speed}</b></div><div>Resistencia<b>${h.stamina}</b></div><div>Aceleración<b>${h.accel}</b></div></div></article>`;}).join('');document.querySelectorAll('[data-horse]').forEach(c=>c.onclick=()=>{const id=c.dataset.horse;if(state.selected.has(id))state.selected.delete(id);else if(state.selected.size<12)state.selected.add(id);renderHorses();});renderSummary();}
 function renderSummary(){const r=currentRace();$('selectedCount').textContent=state.selected.size;$('confirmBtn').disabled=state.selected.size<6;$('raceSummary').innerHTML=`<b>${r.name}</b><br>${r.distance.toLocaleString('es-ES')} m`;$('selectedList').innerHTML=horses.filter(h=>state.selected.has(h.id)).map(h=>`<div class="selected-item"><b>${h.catalogNumber}. ${h.name}</b><span>${SPECIALTY[h.specialty].label}</span></div>`).join('');}
@@ -165,7 +165,7 @@ function buildClosedLapSamples(){const pts=[];sampleLine(FINISH_X,BOTTOM_Z,TRACK
 const CLOSED_LAP=buildClosedLapSamples();
 const CLOSED_LAP_ROUTE=new RaceRoute(CLOSED_LAP);
 function buildMidLongRoute(d){
-  const nominalLap=1800,loops=Math.ceil(d/nominalLap),startNominal=Math.max(0,loops*nominalLap-d);
+  const nominalLap=1800,loops=Math.ceil(d/nominalLap),visualNudge=d===2000?22:0,startNominal=Math.max(0,loops*nominalLap-d+visualNudge);
   const wanted=THREE.MathUtils.clamp(startNominal/nominalLap,0,.999)*CLOSED_LAP_ROUTE.totalLength;
   let lo=0,hi=CLOSED_LAP_ROUTE.cumulative.length-1;
   while(lo<hi){const mid=(lo+hi)>>1;if(CLOSED_LAP_ROUTE.cumulative[mid]<wanted)lo=mid+1;else hi=mid;}
@@ -177,8 +177,8 @@ function buildMidLongRoute(d){
 function classicLongStartX(d){
   if(d>=3000)return FINISH_X-930;
   if(d>=2800)return FINISH_X-860;
-  if(d>=2500)return FINISH_X-760;
-  return FINISH_X-700;
+  if(d>=2500)return FINISH_X-740;
+  return FINISH_X-680;
 }
 function buildClassicLongRoute(d){
   const startX=classicLongStartX(d),pts=[];
@@ -209,7 +209,7 @@ async function init3D(){if(renderer)return;scene=new THREE.Scene();scene.backgro
 
 function assignJockeys(field){const used=new Set();return field.map((h,i)=>{let jockey=h.preferredJockey;if(used.has(jockey))jockey=JOCKEYS.find(j=>!used.has(j))||jockey;used.add(jockey);return {...h,assignedJockey:jockey,raceNumber:i+1};});}
 function drawStar(ctx,cx,cy,o,inn,n=5){let r=-Math.PI/2,step=Math.PI/n;ctx.beginPath();for(let i=0;i<n*2;i++){const rad=i%2===0?o:inn,x=cx+Math.cos(r)*rad,y=cy+Math.sin(r)*rad;i?ctx.lineTo(x,y):ctx.moveTo(x,y);r+=step;}ctx.closePath();ctx.fill();}
-function silkTexture(h){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle=h.silk;x.fillRect(0,0,256,256);x.fillStyle=h.accent;if(h.pattern==='stars')[[50,55],[160,50],[105,125],[195,150],[55,200],[160,210]].forEach(p=>drawStar(x,p[0],p[1],22,9));else if(h.pattern==='cross'){x.save();x.translate(128,128);x.rotate(-Math.PI/4);x.fillRect(-18,-190,36,380);x.rotate(Math.PI/2);x.fillRect(-18,-190,36,380);x.restore();}else if(h.pattern==='quarters'){x.fillRect(0,0,128,128);x.fillRect(128,128,128,128);}else if(h.pattern==='diagonal'){x.save();x.translate(128,128);x.rotate(-Math.PI/4);x.fillRect(-25,-190,50,380);x.restore();}else x.fillRect(0,105,256,46);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
+function silkTexture(h){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle=h.silk;x.fillRect(0,0,256,256);x.fillStyle=h.accent;if(h.pattern==='stars')[[50,55],[160,50],[105,125],[195,150],[55,200],[160,210]].forEach(p=>drawStar(x,p[0],p[1],22,9));else if(h.pattern==='cross'){x.save();x.translate(128,128);x.rotate(-Math.PI/4);x.fillRect(-18,-190,36,380);x.rotate(Math.PI/2);x.fillRect(-18,-190,36,380);x.restore();}else if(h.pattern==='quarters'){x.fillRect(0,0,128,128);x.fillRect(128,128,128,128);}else if(h.pattern==='diagonal'){x.save();x.translate(128,128);x.rotate(-Math.PI/4);x.fillRect(-25,-190,50,380);x.restore();}else if(h.pattern==='stripes'){for(let sx=0;sx<256;sx+=48)x.fillRect(sx,0,24,256);}else x.fillRect(0,105,256,46);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
 function numberTexture(n){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#0b0b0b';x.fillRect(0,0,256,256);x.strokeStyle='#2e2e2e';x.lineWidth=10;x.strokeRect(6,6,244,244);x.fillStyle='#fff';x.textAlign='center';x.textBaseline='middle';x.font='bold 176px Arial';x.fillText(String(n),128,140);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
 function createJockey(h,scale){const g=new THREE.Group(),silk=new THREE.MeshLambertMaterial({map:silkTexture(h)}),accent=new THREE.MeshLambertMaterial({color:h.accent}),skin=new THREE.MeshLambertMaterial({color:0xb98267}),white=new THREE.MeshLambertMaterial({color:0xffffff}),black=new THREE.MeshLambertMaterial({color:0x151719});const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.38,5,10),silk);torso.position.set(0,.82,0);torso.rotation.x=-.73;g.add(torso);const head=new THREE.Mesh(new THREE.SphereGeometry(.11,12,10),skin);head.position.set(0,1.08,.18);g.add(head);const cap=new THREE.Mesh(new THREE.SphereGeometry(.13,12,8,0,Math.PI*2,0,Math.PI*.62),accent);cap.position.set(0,1.16,.18);g.add(cap);for(const s of [-1,1]){const thigh=new THREE.Mesh(new THREE.CapsuleGeometry(.045,.3,4,8),white);thigh.position.set(s*.12,.57,0);thigh.rotation.z=s*.38;thigh.rotation.x=.75;g.add(thigh);const boot=new THREE.Mesh(new THREE.CapsuleGeometry(.038,.27,4,8),black);boot.position.set(s*.17,.36,.15);boot.rotation.x=1.02;g.add(boot);const arm=new THREE.Mesh(new THREE.CapsuleGeometry(.038,.28,4,8),silk.clone());arm.position.set(s*.11,.78,.23);arm.rotation.x=-1.02;arm.rotation.z=s*.18;g.add(arm);}g.scale.setScalar(scale);return g;}
 function createMantilla(h,w,height,length){const g=new THREE.Group(),mat=new THREE.MeshLambertMaterial({map:numberTexture(h.raceNumber),side:THREE.DoubleSide}),pw=Math.max(.36,length*.22),ph=Math.max(.3,height*.25);for(const s of [-1,1]){const p=new THREE.Mesh(new THREE.PlaneGeometry(pw,ph),mat.clone());p.position.x=s*w*.50;p.rotation.y=s>0?-Math.PI/2:Math.PI/2;g.add(p);}return g;}
@@ -231,7 +231,7 @@ function addRaceNumberToSaddle(root,model,h){
   }
 }
 function makeRunner(h){
-  const root=new THREE.Group(),model=SkeletonUtils.clone(horseTemplate);
+  const root=new THREE.Group(),model=SkeletonUtils.clone(horseTemplate),jockeySilkTexture=silkTexture(h);
   root.add(model);
   model.traverse(o=>{
     if(!o.isMesh)return;
@@ -240,7 +240,7 @@ function makeRunner(h){
     for(const mat of mats){
       const name=(mat?.name||'').toLowerCase();
       if(name.includes('horse.body.pattern')){setMaterialColor(mat,h.coat);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.9;mat.metalness=0;mat.needsUpdate=true;}
-      else if(name.includes('jockey_silk_main')||name.includes('jockey_silk_primary'))setMaterialColor(mat,h.silk);
+      else if(name.includes('jockey_silk_main')||name.includes('jockey_silk_primary')){mat.map=jockeySilkTexture;setMaterialColor(mat,0xffffff);mat.needsUpdate=true;}
       else if(name.includes('jockey_silk_secondary'))setMaterialColor(mat,h.accent);
       else if(name.includes('jockey_boot'))setMaterialColor(mat,0x171717);
       else if(name.includes('jockey_breeches')||name.includes('jockey_pants'))setMaterialColor(mat,0xf5f5f2);
