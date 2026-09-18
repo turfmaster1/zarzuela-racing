@@ -178,7 +178,9 @@ function classicLongStartX(d){
   if(d>=3000)return FINISH_X-930;
   if(d>=2800)return FINISH_X-860;
   if(d>=2500)return FINISH_X-740;
-  return FINISH_X-680;
+  if(d>=2400)return FINISH_X-680;
+  if(d===2000)return FINISH_X-620;
+  return FINISH_X-650;
 }
 function buildClassicLongRoute(d){
   const startX=classicLongStartX(d),pts=[];
@@ -188,6 +190,7 @@ function buildClassicLongRoute(d){
 }
 function buildRoute(d){
   if(d<=1600)return buildOriginalShortRoute(d);
+  if(d===2000)return buildClassicLongRoute(d);
   if(d>=2400)return buildClassicLongRoute(d);
   return buildMidLongRoute(d);
 }
@@ -396,9 +399,28 @@ function packCenter(){
   const c=new THREE.Vector3();if(!runners.length)return c;
   runners.forEach(r=>c.add(r.root.position));return c.divideScalar(runners.length);
 }
+function frontCameraFocus(){
+  const s=sorted();
+  if(!s.length)return {center:new THREE.Vector3(),lead:null,gap:0,frontSpread:0};
+  const lead=s[0],second=s[1]||lead,gap=Math.max(0,lead.distance-second.distance);
+  const cluster=s.filter(r=>lead.distance-r.distance<=48).slice(0,5);
+  const center=new THREE.Vector3();
+  let total=0;
+  cluster.forEach((r,i)=>{
+    const behind=Math.max(0,lead.distance-r.distance);
+    const weight=i===0?3.5:Math.max(.55,2.0-behind/32);
+    center.addScaledVector(r.root.position,weight);
+    total+=weight;
+  });
+  if(total>0)center.divideScalar(total);else center.copy(lead.root.position);
+  if(gap>45)center.lerp(lead.root.position,.72);
+  else center.lerp(lead.root.position,.28);
+  const last=cluster.at(-1)||lead;
+  return {center,lead,gap,frontSpread:Math.max(0,lead.distance-last.distance)};
+}
 function updateCamera(dt){
   if(!runners.length)return;
-  const s=sorted(),lead=s[0],center=packCenter();
+  const focus=frontCameraFocus(),lead=focus.lead,center=focus.center;
   const f=THREE.MathUtils.clamp(lead.distance/race.distance,0,1),tan=route.getTangentAtFraction(f);
   const rawSide=new THREE.Vector3(tan.z,0,-tan.x).normalize();
   const infieldCenter=new THREE.Vector3(-82,0,BOTTOM_Z-98);
@@ -408,24 +430,26 @@ function updateCamera(dt){
   const insideDir=insidePos.clone().sub(center).normalize();
   const outsideDir=insideDir.clone().negate();
   const remaining=race.distance-lead.distance;
+  const separation=Math.max(focus.gap,focus.frontSpread);
   let desired,target=center.clone();
   if(state.cameraMode===0){
-    const final=remaining<500;setCameraFov(final?30:33);
-    desired=center.clone().addScaledVector(outsideDir,final?19:24).addScaledVector(tan,final?15:20);
-    desired.y=final?5.8:8.3;
-    target=center.clone().addScaledVector(tan,final?-3:-5);target.y=1.9;
+    const final=remaining<500;
+    const extra=THREE.MathUtils.clamp(separation/55,0,1);
+    setCameraFov((final?30:33)+extra*8);
+    desired=center.clone().addScaledVector(outsideDir,(final?19:24)+extra*10).addScaledVector(tan,final?15:20);
+    desired.y=(final?5.8:8.3)+extra*4.5;
+    target=center.clone().lerp(lead.root.position,focus.gap>35?.55:.22).addScaledVector(tan,final?-3:-5);target.y=1.9;
   }else if(state.cameraMode===1){
-    setCameraFov(48);desired=center.clone();desired.y=72;target.y=0;
+    setCameraFov(50);desired=center.clone().lerp(lead.root.position,.35);desired.y=78+Math.min(22,separation*.25);target.copy(center).lerp(lead.root.position,.45);target.y=0;
   }else if(state.cameraMode===2){
-    setCameraFov(38);desired=insidePos.clone().addScaledVector(tan,-3);
-    desired.y=4.7;target=center.clone().addScaledVector(tan,5);target.y=1.8;
+    const extra=THREE.MathUtils.clamp(separation/60,0,1);
+    setCameraFov(38+extra*7);desired=insidePos.clone().addScaledVector(tan,-3);desired.y=4.7+extra*2.5;target=center.clone().lerp(lead.root.position,.45).addScaledVector(tan,5);target.y=1.8;
   }else if(state.cameraMode===3){
-    setCameraFov(33);desired=center.clone().addScaledVector(outsideDir,8).addScaledVector(tan,5);
-    desired.y=3.2;target=center.clone().addScaledVector(tan,-2);target.y=1.7;
+    setCameraFov(35);desired=lead.root.position.clone().addScaledVector(outsideDir,9).addScaledVector(tan,5);desired.y=3.5;target=lead.root.position.clone().addScaledVector(tan,-2);target.y=1.7;
   }else{
     setCameraFov(30);desired=new THREE.Vector3(FINISH_X,4.8,BOTTOM_Z+43);target=new THREE.Vector3(FINISH_X,1.8,BOTTOM_Z);
   }
-  camera.position.lerp(desired,1-Math.exp(-5.2*dt));camera.lookAt(target);
+  camera.position.lerp(desired,1-Math.exp(-5.5*dt));camera.lookAt(target);
 }
 function createRaceMemoryCard(r,winnerHorse){
   const c=document.createElement('canvas');c.width=1200;c.height=430;const x=c.getContext('2d');
