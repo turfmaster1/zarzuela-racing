@@ -242,9 +242,30 @@ async function loadRaceHorseGLB(){
   for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
   return await new Promise((resolve,reject)=>loader.parse(bytes.buffer,'',resolve,reject));
 }
-async function init3D(){if(renderer)return;scene=new THREE.Scene();scene.background=new THREE.Color(0x8fc7e8);camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,3000);camera.position.set(0,7,25);renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance',alpha:false,stencil:false,depth:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,.9));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=false;host.innerHTML='';host.appendChild(renderer.domElement);orbitControls=new OrbitControls(camera,renderer.domElement);orbitControls.enabled=false;orbitControls.enableDamping=true;orbitControls.dampingFactor=.08;orbitControls.minDistance=3;orbitControls.maxDistance=220;orbitControls.maxPolarAngle=Math.PI*.48;scene.add(new THREE.HemisphereLight(0xffffff,0x667755,2.25));const sun=new THREE.DirectionalLight(0xffffff,2.65);sun.position.set(100,180,80);scene.add(sun);buildWorld();const gltf=await loadRaceHorseGLB();horseTemplate=gltf.scene;horseClips=Object.fromEntries(gltf.animations.map(c=>[c.name,c]));if(!horseClips['horse.gallop'])throw new Error('El GLB no contiene horse.gallop');$('loadOverlay').classList.add('hidden');addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});}
+async function init3D(){if(renderer)return;scene=new THREE.Scene();scene.background=new THREE.Color(0x8fc7e8);camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,3000);camera.position.set(0,7,25);renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance',alpha:false,stencil:false,depth:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.15));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=false;host.innerHTML='';host.appendChild(renderer.domElement);orbitControls=new OrbitControls(camera,renderer.domElement);orbitControls.enabled=false;orbitControls.enableDamping=true;orbitControls.dampingFactor=.08;orbitControls.minDistance=3;orbitControls.maxDistance=220;orbitControls.maxPolarAngle=Math.PI*.48;scene.add(new THREE.HemisphereLight(0xffffff,0x667755,2.25));const sun=new THREE.DirectionalLight(0xffffff,2.65);sun.position.set(100,180,80);scene.add(sun);buildWorld();const gltf=await loadRaceHorseGLB();horseTemplate=gltf.scene;horseClips=Object.fromEntries(gltf.animations.map(c=>[c.name,c]));if(!horseClips['horse.gallop'])throw new Error('El GLB no contiene horse.gallop');$('loadOverlay').classList.add('hidden');addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});}
 
-function assignJockeys(field){const used=new Set();return field.map((h,i)=>{let jockey=h.preferredJockey;if(used.has(jockey))jockey=JOCKEYS.find(j=>!used.has(j))||jockey;used.add(jockey);return {...h,assignedJockey:jockey,raceNumber:i+1};});}
+function assignJockeys(field){
+  const used=new Set(),stableSeen=new Map();
+  return field.map((h,i)=>{
+    let jockey=h.preferredJockey;
+    if(used.has(jockey))jockey=JOCKEYS.find(j=>!used.has(j))||jockey;
+    used.add(jockey);
+
+    const stableIndex=stableSeen.get(h.stable)||0;
+    stableSeen.set(h.stable,stableIndex+1);
+
+    let capColor=h.accent;
+    if(h.stable==='Yeguada Rocío'){
+      capColor=[0xf5f5ef,0x0d5c3d,0xf5f5ef,0x0d5c3d][stableIndex%4];
+    }else if(h.stable==='Becares'){
+      capColor=[0xf05a18,0xd71920,0xf05a18,0xd71920][stableIndex%4];
+    }else if(h.id==='safaga')capColor=0x20c9c3;
+    else if(h.id==='sirjan')capColor=0xf05a18;
+    else if(h.id==='fortun')capColor=0x090a0b;
+
+    return {...h,assignedJockey:jockey,raceNumber:i+1,capColor};
+  });
+}
 function drawStar(ctx,cx,cy,o,inn,n=5){let r=-Math.PI/2,step=Math.PI/n;ctx.beginPath();for(let i=0;i<n*2;i++){const rad=i%2===0?o:inn,x=cx+Math.cos(r)*rad,y=cy+Math.sin(r)*rad;i?ctx.lineTo(x,y):ctx.moveTo(x,y);r+=step;}ctx.closePath();ctx.fill();}
 function silkTexture(h){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle=h.silk;x.fillRect(0,0,256,256);x.fillStyle=h.accent;if(h.pattern==='stars')[[50,55],[160,50],[105,125],[195,150],[55,200],[160,210]].forEach(p=>drawStar(x,p[0],p[1],22,9));else if(h.pattern==='cross'){x.save();x.translate(128,128);x.rotate(-Math.PI/4);x.fillRect(-18,-190,36,380);x.rotate(Math.PI/2);x.fillRect(-18,-190,36,380);x.restore();}else if(h.pattern==='quarters'){x.fillRect(0,0,128,128);x.fillRect(128,128,128,128);}else if(h.pattern==='diagonal'){x.save();x.translate(128,128);x.rotate(-Math.PI/4);x.fillRect(-25,-190,50,380);x.restore();}else if(h.pattern==='stripes'){for(let sx=0;sx<256;sx+=48)x.fillRect(sx,0,24,256);}else if(h.pattern==='chestcross'){x.fillRect(112,38,32,180);x.fillRect(52,104,152,32);}else if(h.pattern==='solid'){}else x.fillRect(0,105,256,46);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
 function numberTexture(n){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#0b0b0b';x.fillRect(0,0,256,256);x.strokeStyle='#2e2e2e';x.lineWidth=10;x.strokeRect(6,6,244,244);x.fillStyle='#fff';x.textAlign='center';x.textBaseline='middle';x.font='bold 176px Arial';x.fillText(String(n),128,140);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
@@ -272,6 +293,11 @@ function addHorseMarkings(root,h,box,size){
 }
 function makeRunner(h){
   const root=new THREE.Group(),model=SkeletonUtils.clone(horseTemplate),jockeySilkTexture=silkTexture(h);
+  if(renderer){
+    jockeySilkTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+    jockeySilkTexture.minFilter=THREE.LinearMipmapLinearFilter;
+    jockeySilkTexture.magFilter=THREE.LinearFilter;
+  }
   root.add(model);
   model.traverse(o=>{
     if(!o.isMesh)return;
@@ -284,11 +310,12 @@ function makeRunner(h){
       if(name.includes('horse_teeth')){setMaterialColor(mat,0x5a493b);mat.map=null;mat.needsUpdate=true;}
       else if(name.includes('horse_gums')){setMaterialColor(mat,0x4a2727);mat.map=null;mat.needsUpdate=true;}
       else if(name.includes('horse_cornea')){mat.transparent=true;mat.opacity=.16;mat.depthWrite=false;mat.needsUpdate=true;}
-      else if(name==='horse_hooves'||horseLeg||name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x050505);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.95;mat.metalness=0;mat.needsUpdate=true;}
-      else if(name.includes('horse.body.pattern')){setMaterialColor(mat,h.coat);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.9;mat.metalness=0;mat.needsUpdate=true;}
-      else if(name.includes('jockey_silk_main')||name.includes('jockey_silk_primary')){mat.map=jockeySilkTexture;setMaterialColor(mat,0xffffff);mat.needsUpdate=true;}
+      else if(name==='horse_hooves'||horseLeg||name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x090705);mat.map=null;mat.roughness=.88;mat.metalness=0;mat.needsUpdate=true;}
+      else if(name.includes('horse.body.pattern')){setMaterialColor(mat,h.coat);mat.map=null;mat.roughness=.78;mat.metalness=0;mat.needsUpdate=true;}
+      else if(name.includes('jockey_silk_main')||name.includes('jockey_silk_primary')){mat.map=jockeySilkTexture;setMaterialColor(mat,0xffffff);mat.roughness=.72;mat.needsUpdate=true;}
+      else if(name.includes('jockey_silk_secondary.001')){mat.map=null;setMaterialColor(mat,h.capColor??h.accent);}
       else if(name.includes('jockey_silk_secondary'))setMaterialColor(mat,h.id==='safaga'?h.silk:h.accent);
-      else if(name.includes('jockey_helmet')||name.includes('helmet')||name.includes('jockey_cap')){const cap=h.id==='safaga'?0x20c9c3:h.id==='estraunza'?0x1746b8:h.id==='sirjan'?0xf05a18:h.id==='fortun'?0x090a0b:(h.stable==='Yeguada Rocío'?0xf5f5ef:h.accent);setMaterialColor(mat,cap);if(h.stable==='Yeguada Rocío'){mat.map=jockeySilkTexture;mat.needsUpdate=true;}}
+      else if(name.includes('jockey_helmet')||name.includes('helmet')||name.includes('jockey_cap')){mat.map=null;setMaterialColor(mat,h.capColor??h.accent);}
       else if(name.includes('jockey_boot'))setMaterialColor(mat,0x171717);
       else if(name.includes('jockey_breeches')||name.includes('jockey_pants'))setMaterialColor(mat,0xf5f5f2);
       else if(name==='saddlecloth')setMaterialColor(mat,0x111111);
@@ -419,8 +446,11 @@ function updateRaceAI(r,dt,live,leader){
     // Cada fila tiene hasta 3 caballos y todos ocupan preferentemente las calles interiores.
     const row=r.packRow||0;
     const col=r.packCol||0;
-    const laneOffsets=[1.05,3.10,5.15];
-    const packLane=railTarget-insideSign*laneOffsets[col];
+    const laneOffsets=[1.00,2.85,4.75];
+    let packLane;
+    if(row===0)packLane=railTarget-insideSign*.85;
+    else if(row===1)packLane=railTarget-insideSign*(col===1?2.15:4.05);
+    else packLane=railTarget-insideSign*laneOffsets[col];
 
     if(r.nextDecision<=0&&r.laneLock<=0){
       if(laneFree(r,packLane,5.8)){
@@ -467,7 +497,13 @@ function updateRaceAI(r,dt,live,leader){
   }
 
   const laneBlend=1-Math.exp(-(inFinal?1.05:.72)*scaledDt);
-  r.lateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
+  const proposedLateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
+  const lateralConflict=runners.some(o=>
+    o!==r&&!o.finished&&
+    Math.abs(o.distance-r.distance)<2.75&&
+    Math.abs(o.lateral-proposedLateral)<1.65
+  );
+  if(!lateralConflict)r.lateral=proposedLateral;
 
   r.effort=effortFor(r);
   if(r.effort>.78)r.energy=Math.max(.82,r.energy-scaledDt*(r.effort-.78)*.0034);
@@ -484,8 +520,16 @@ const packOrder=[racePaceLeader,...runners.filter(x=>x!==racePaceLeader).sort((a
 })];
 packOrder.forEach((runner,i)=>{
   runner.packSlot=i;
-  if(i===0){runner.packRow=0;runner.packCol=0;}
-  else{runner.packRow=1+Math.floor((i-1)/3);runner.packCol=(i-1)%3;}
+  if(i===0){
+    runner.packRow=0;runner.packCol=0;
+  }else if(i<=2){
+    // Dos perseguidores forman el primer mini-grupo detrás del puntero.
+    runner.packRow=1;runner.packCol=i;
+  }else{
+    // Después, líneas de tres claramente más retrasadas.
+    runner.packRow=2+Math.floor((i-3)/3);
+    runner.packCol=(i-3)%3;
+  }
 });
 createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$('loadOverlay').classList.add('hidden');startTime=performance.now();last=performance.now();raf=requestAnimationFrame(loop);}
 
@@ -507,8 +551,10 @@ function targetSpeed(r,live,leader){
   if(packPhase&&racePaceLeader){
     const row=r.packRow||0;
     const col=r.packCol||0;
-    // Puntero ~1.6 m delante; cada fila posterior queda ~2.2 m detrás de la anterior.
-    const desiredGap=row===0?0:1.55+(row-1)*2.20+col*.10;
+    // Pelotón escalonado: puntero, dos cerca detrás y luego filas separadas.
+    let desiredGap=0;
+    if(row===1)desiredGap=2.45+(col-1)*.75;
+    else if(row>=2)desiredGap=6.15+(row-2)*4.15+col*.55;
     const actualGap=racePaceLeader.distance-r.distance;
 
     if(r===racePaceLeader){
@@ -540,9 +586,11 @@ function targetSpeed(r,live,leader){
 
   if(r.blocked)factor*=.990;
 
-  // En curva, el interior tiene ventaja real por recorrer menos. En la recta se neutraliza casi por completo.
-  if(remaining>(d<=1600?440:575))factor*=railEfficiencyFor(r);
-  else factor*=THREE.MathUtils.lerp(1,railEfficiencyFor(r),.12);
+  // El exterior paga la distancia extra durante toda la curva.
+  // Solo se neutraliza cuando ya están realmente rectos en la recta final.
+  const finalStraight=remaining<(d<=1600?440:575)&&turnIntensityFor(r)<.10;
+  if(!finalStraight)factor*=railEfficiencyFor(r);
+  else factor*=THREE.MathUtils.lerp(1,railEfficiencyFor(r),.06);
 
   const fatigue=progress*progress*Math.max(0,94-h.stamina)*.00056*(d>=2200?1.12:.70);
   factor-=fatigue;
@@ -589,10 +637,10 @@ function loop(now){
     const previousDistance=r.distance;
     const proposedDistance=previousDistance+r.speed*dt*state.raceSpeed;
     const closeAhead=runners
-      .filter(o=>o!==r&&!o.finished&&o.distance>previousDistance&&Math.abs(o.lateral-r.lateral)<1.45)
+      .filter(o=>o!==r&&!o.finished&&o.distance>previousDistance&&Math.abs(o.lateral-r.lateral)<1.75)
       .sort((a,b)=>a.distance-b.distance)[0];
     if(closeAhead){
-      const maxAllowed=Math.max(previousDistance,closeAhead.distance-1.15);
+      const maxAllowed=Math.max(previousDistance,closeAhead.distance-2.55);
       r.distance=Math.min(proposedDistance,maxAllowed);
     }else{
       r.distance=proposedDistance;
