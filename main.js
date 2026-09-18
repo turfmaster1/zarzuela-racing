@@ -317,9 +317,18 @@ function makeRunner(h){
       else if(name.includes('horse_gums')){setMaterialColor(mat,0x4a2727);mat.map=null;mat.needsUpdate=true;}
       else if(name.includes('horse_cornea')){mat.transparent=true;mat.opacity=.16;mat.depthWrite=false;mat.needsUpdate=true;}
       else if(name==='horse_hooves'||horseLeg||name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x090705);mat.map=null;mat.roughness=.88;mat.metalness=0;mat.needsUpdate=true;}
-      else if(name.includes('horse.body.pattern')){setMaterialColor(mat,h.coat);mat.map=null;mat.roughness=.78;mat.metalness=0;mat.needsUpdate=true;}
+      else if(name.includes('horse.body.pattern')){
+        setMaterialColor(mat,h.coat);
+        mat.map=null;
+        mat.normalMap=null;
+        mat.roughnessMap=null;
+        mat.metalnessMap=null;
+        mat.aoMap=null;
+        mat.roughness=.84;
+        mat.metalness=0;
+        mat.needsUpdate=true;
+      }
       else if(name.includes('jockey_silk_main')||name.includes('jockey_silk_primary')){mat.map=jockeySilkTexture;setMaterialColor(mat,0xffffff);mat.roughness=.72;mat.needsUpdate=true;}
-      else if(name.includes('jockey_silk_secondary.001')){mat.map=null;setMaterialColor(mat,h.capColor??h.accent);}
       else if(name.includes('jockey_silk_secondary'))setMaterialColor(mat,h.id==='safaga'?h.silk:h.accent);
 
       else if(name.includes('jockey_boot'))setMaterialColor(mat,0x171717);
@@ -327,6 +336,21 @@ function makeRunner(h){
       else if(name==='saddlecloth')setMaterialColor(mat,0x111111);
     }
   });
+  // Forzamos el color del gorro directamente sobre los nodos reales del GLB.
+  for(const capNodeName of ['JOCKEY_Helmet','JOCKEY_HelmetVisor']){
+    const capNode=model.getObjectByName(capNodeName);
+    if(capNode){
+      capNode.traverse(part=>{
+        if(!part.isMesh)return;
+        const oldMats=Array.isArray(part.material)?part.material:[part.material];
+        const newMats=oldMats.map(()=>new THREE.MeshLambertMaterial({
+          color:h.capColor??h.accent
+        }));
+        part.material=Array.isArray(part.material)?newMats:newMats[0];
+      });
+    }
+  }
+
   model.rotation.y=0;
   model.updateMatrixWorld(true);
   let box=new THREE.Box3().setFromObject(model),center=new THREE.Vector3();
@@ -443,23 +467,25 @@ function updateRaceAI(r,dt,live,leader){
 
   const remaining=race.distance-r.distance;
   const finalAttackDistance=race.distance<=1600?440:575;
-  const inFinal=remaining<=finalAttackDistance;
   const insideSign=interiorSignFor(r);
   const railTarget=railTargetFor(r);
+  const straightOnly=race.distance<=1200;
+  const onFinalStraight=straightOnly||(remaining<=finalAttackDistance&&turnIntensityFor(r)<.10);
+  const inFinal=onFinalStraight; 
 
   if(!inFinal){
     // En 1000/1200 m no forzamos interior: son recorridos rectos.
-    const straightOnly=race.distance<=1200;
     const row=r.packRow||0;
     const col=r.packCol||0;
-    const laneOffsets=[1.00,3.30,5.60];
+    const laneOffsets=[.90,2.45,4.05];
     let packLane;
     if(row===0)packLane=railTarget-insideSign*.85;
-    else if(row===1)packLane=railTarget-insideSign*(col===1?2.20:4.50);
+    else if(row===1)packLane=railTarget-insideSign*(col===1?1.85:3.55);
     else packLane=railTarget-insideSign*laneOffsets[col];
 
     if(r.nextDecision<=0&&r.laneLock<=0){
       r.mergeBlocked=false;
+      r.mustMerge=false;
 
       if(straightOnly){
         // En recta pura mantiene una calle segura y no se obliga a buscar palos.
@@ -468,26 +494,29 @@ function updateRaceAI(r,dt,live,leader){
       }else{
         // En carreras con curva, TODO caballo que salga abierto busca el interior progresivamente.
         // No salta de golpe: va cerrándose por pasos para poder colocarse detrás de otro si hace falta.
-        const step=r.distance<120?1.05:1.35;
+        const metresFromRail=Math.abs(r.lateral-railTarget);
+        const mustMerge=metresFromRail>4.35;
+        const step=mustMerge?(r.distance<120?1.35:1.75):(r.distance<120?1.05:1.30);
         const inwardLane=stepToward(r.lateral,packLane,step);
         const smallerStep=stepToward(r.lateral,packLane,step*.55);
 
-        if(laneFree(r,inwardLane,5.0)){
+        if(laneFree(r,inwardLane,4.8)){
           r.targetLateral=inwardLane;
-          r.maneuver='merge-inside';
-        }else if(laneFree(r,smallerStep,4.2)){
+          r.maneuver=mustMerge?'must-merge-inside':'merge-inside';
+        }else if(laneFree(r,smallerStep,4.0)){
           r.targetLateral=smallerStep;
           r.maneuver='merge-inside-slow';
         }else{
-          // Si no cabe, no atraviesa: espera detrás y vuelve a intentarlo.
+          // Si está muy abierto y no hay hueco, levanta claramente para poder meterse detrás.
           r.targetLateral=r.lateral;
-          r.maneuver='merge-wait';
+          r.maneuver=mustMerge?'must-merge-wait':'merge-wait';
           r.mergeBlocked=true;
+          r.mustMerge=mustMerge;
         }
       }
 
-      r.laneLock=.95+Math.random()*.25;
-      r.nextDecision=.48+Math.random()*.20;
+      r.laneLock=(r.mustMerge?.38:.78)+Math.random()*.18;
+      r.nextDecision=(r.mustMerge?.24:.42)+Math.random()*.16;
     }
   }else if(!r.finalMoveChosen){
     // SALIDA DEL PARDO / RECTA FINAL: busca hueco real entre interior, medio y exterior.
@@ -526,8 +555,8 @@ function updateRaceAI(r,dt,live,leader){
   const proposedLateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
   const lateralConflict=runners.some(o=>
     o!==r&&!o.finished&&
-    Math.abs(o.distance-r.distance)<4.10&&
-    Math.abs(o.lateral-proposedLateral)<2.00
+    Math.abs(o.distance-r.distance)<4.80&&
+    Math.abs(o.lateral-proposedLateral)<2.15
   );
   if(!lateralConflict)r.lateral=proposedLateral;
 
@@ -611,7 +640,8 @@ function targetSpeed(r,live,leader){
   }
 
   if(r.blocked)factor*=.990;
-  if(r.mergeBlocked&&d>1200)factor*=.975;
+  if(r.mustMerge&&d>1200)factor*=.935;
+  else if(r.mergeBlocked&&d>1200)factor*=.968;
 
   // El exterior paga la distancia extra durante toda la curva.
   // Solo se neutraliza cuando ya están realmente rectos en la recta final.
@@ -664,10 +694,10 @@ function loop(now){
     const previousDistance=r.distance;
     const proposedDistance=previousDistance+r.speed*dt*state.raceSpeed;
     const closeAhead=runners
-      .filter(o=>o!==r&&!o.finished&&o.distance>previousDistance&&Math.abs(o.lateral-r.lateral)<2.05)
+      .filter(o=>o!==r&&!o.finished&&o.distance>previousDistance&&Math.abs(o.lateral-r.lateral)<2.20)
       .sort((a,b)=>a.distance-b.distance)[0];
     if(closeAhead){
-      const maxAllowed=Math.max(previousDistance,closeAhead.distance-3.45);
+      const maxAllowed=Math.max(previousDistance,closeAhead.distance-4.05);
       r.distance=Math.min(proposedDistance,maxAllowed);
     }else{
       r.distance=proposedDistance;
@@ -682,8 +712,8 @@ function loop(now){
     const front=safetyOrder[i];
     for(let j=i+1;j<safetyOrder.length;j++){
       const back=safetyOrder[j];
-      if(Math.abs(front.lateral-back.lateral)<2.05&&front.distance-back.distance<3.45){
-        back.distance=Math.max(0,front.distance-3.45);
+      if(Math.abs(front.lateral-back.lateral)<2.20&&front.distance-back.distance<4.05){
+        back.distance=Math.max(0,front.distance-4.05);
         back.speed=Math.min(back.speed,front.speed*.985);
       }
     }
