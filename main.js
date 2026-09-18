@@ -243,30 +243,9 @@ function addRaceNumberToSaddle(root,model,h){
 }
 function addHorseMarkings(root,h,box,size){
   const markings=h.markings||{face:'none',socks:[]};
-  if(markings.face==='none'&&(!markings.socks||!markings.socks.length))return;
-  const white=new THREE.MeshLambertMaterial({color:0xf6f5ee});
-  const legBlack=new THREE.MeshLambertMaterial({color:0x171310});
+  if(!markings.socks||!markings.socks.length)return;
+  const coatMat=new THREE.MeshLambertMaterial({color:h.coat});
   const center=new THREE.Vector3();box.getCenter(center);
-  const frontZ=box.max.z-.035;
-  if(markings.face&&markings.face!=='none'){
-    const faceGroup=new THREE.Group();
-    let width=.10,height=.20;
-    if(markings.face==='blaze'){width=.16;height=.46;}
-    else if(markings.face==='stripe'){width=.085;height=.36;}
-    else if(markings.face==='star'){width=.13;height=.13;}
-    const patch=new THREE.Mesh(new THREE.PlaneGeometry(width,height),white);
-    patch.position.set(center.x,box.min.y+size.y*.80,frontZ);
-    patch.rotation.x=-.10;
-    faceGroup.add(patch);
-    if(markings.face==='star'){
-      const star=new THREE.Mesh(new THREE.CircleGeometry(width*.58,5),white);
-      star.position.set(center.x,box.min.y+size.y*.80,frontZ+.004);
-      star.rotation.z=Math.PI/5;
-      faceGroup.add(star);
-      patch.visible=false;
-    }
-    root.add(faceGroup);
-  }
   const sockMap={
     LF:[ size.x*.18,box.max.z-size.z*.27],
     RF:[-size.x*.18,box.max.z-size.z*.27],
@@ -275,7 +254,15 @@ function addHorseMarkings(root,h,box,size){
   };
   (markings.socks||[]).forEach(key=>{
     const p=sockMap[key];if(!p)return;
-    const sock=new THREE.Mesh(new THREE.CylinderGeometry(Math.max(.035,size.x*.035),Math.max(.038,size.x*.040),Math.max(.16,size.y*.16),8),legBlack);
+    const sock=new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        Math.max(.035,size.x*.035),
+        Math.max(.038,size.x*.040),
+        Math.max(.16,size.y*.16),
+        8
+      ),
+      coatMat.clone()
+    );
     sock.position.set(p[0],box.min.y+Math.max(.09,size.y*.085),p[1]);
     root.add(sock);
   });
@@ -560,7 +547,7 @@ function targetSpeed(r,live,leader){
 function captureFinishPhoto(){
   const oldPos=camera.position.clone(),oldQuat=camera.quaternion.clone(),oldFov=camera.fov;
   // Foto finish lateral: los caballos cruzan delante de la herradura, que queda centrada al fondo.
-  camera.position.set(FINISH_X+.10,4.25,BOTTOM_Z+58);
+  camera.position.set(FINISH_X+.10,4.25,BOTTOM_Z+44);
   camera.fov=26;
   camera.updateProjectionMatrix();
   camera.lookAt(FINISH_X+.10,2.65,RAIL_Z_INNER-.82);
