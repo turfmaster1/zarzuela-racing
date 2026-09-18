@@ -240,9 +240,11 @@ function makeRunner(h){
     if(!o.isMesh)return;
     if(o.material)o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();
     const mats=Array.isArray(o.material)?o.material:[o.material];
+    const objectName=(o.name||'').toLowerCase();
     for(const mat of mats){
       const name=(mat?.name||'').toLowerCase();
-      if(name.includes('horse.body.pattern')){setMaterialColor(mat,h.coat);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.9;mat.metalness=0;mat.needsUpdate=true;}
+      if(name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x171310);mat.map=null;mat.needsUpdate=true;}
+      else if(name.includes('horse.body.pattern')){setMaterialColor(mat,h.coat);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.9;mat.metalness=0;mat.needsUpdate=true;}
       else if(name.includes('jockey_silk_main')||name.includes('jockey_silk_primary')){mat.map=jockeySilkTexture;setMaterialColor(mat,0xffffff);mat.needsUpdate=true;}
       else if(name.includes('jockey_silk_secondary'))setMaterialColor(mat,h.id==='safaga'?h.silk:h.accent);
       else if(name.includes('jockey_helmet')||name.includes('helmet')||name.includes('jockey_cap')){const cap=h.id==='safaga'?0x20c9c3:h.id==='estraunza'?0x1746b8:h.id==='sirjan'?0xf05a18:h.id==='fortun'?0x090a0b:(h.stable==='Yeguada Rocío'?0xf5f5ef:h.accent);setMaterialColor(mat,cap);if(h.stable==='Yeguada Rocío'){mat.map=jockeySilkTexture;mat.needsUpdate=true;}}
@@ -352,13 +354,38 @@ function updateRaceAI(r,dt){
   const railTarget=railTargetFor(r);
 
   if(r.nextDecision<=0){
+    const live=sorted();
+    const leader=live[0];
+    const gapToLeader=Math.max(0,(leader?.distance||r.distance)-r.distance);
+    const metresFromRail=Math.abs(r.lateral-railTarget);
     const blockers=runners
       .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&o.distance-r.distance<10.5&&Math.abs(o.lateral-r.lateral)<1.65)
       .sort((a,b)=>a.distance-b.distance);
     r.blocked=blockers.length>0;
 
     if(r.laneLock<=0){
-      if(r.blocked){
+      const urgentRailReturn=metresFromRail>4.2&&gapToLeader>4.0&&remaining>180;
+      if(urgentRailReturn){
+        const inwardLane=stepToward(r.lateral,railTarget,2.25);
+        const deeperInward=stepToward(r.lateral,railTarget,3.35);
+        if(laneFree(r,inwardLane,7.0)){
+          r.targetLateral=inwardLane;
+          r.maneuver='recover-rail';
+          r.laneLock=.85+Math.random()*.25;
+        }else if(laneFree(r,deeperInward,7.4)){
+          r.targetLateral=deeperInward;
+          r.maneuver='recover-rail';
+          r.laneLock=.95+Math.random()*.25;
+        }else if(r.blocked){
+          r.targetLateral=r.lateral;
+          r.maneuver='wait-inside-gap';
+          r.laneLock=.45;
+        }else{
+          r.targetLateral=r.lateral;
+          r.maneuver='hold';
+          r.laneLock=.40;
+        }
+      }else if(r.blocked){
         const outLane=r.lateral+outsideSign*2.05;
         const inLane=r.lateral+insideSign*1.90;
         const hasInnerRoom=Math.abs(inLane)<=TRACK_WIDTH/2-2.2;
@@ -452,12 +479,13 @@ function targetSpeed(r){
 }
 function captureFinishPhoto(){
   const oldPos=camera.position.clone(),oldQuat=camera.quaternion.clone(),oldFov=camera.fov;
-  camera.position.set(FINISH_X+34,4.7,BOTTOM_Z+1.2);
-  camera.fov=34;
+  // Foto finish clásica: perpendicular a la línea, centrada en la herradura/meta.
+  camera.position.set(FINISH_X+.35,3.9,BOTTOM_Z+48);
+  camera.fov=29;
   camera.updateProjectionMatrix();
-  camera.lookAt(FINISH_X-18,1.65,BOTTOM_Z);
+  camera.lookAt(FINISH_X+.1,2.15,BOTTOM_Z-3.5);
   renderer.render(scene,camera);
-  snapshot=renderer.domElement.toDataURL('image/jpeg',.88);
+  snapshot=renderer.domElement.toDataURL('image/jpeg',.90);
   camera.position.copy(oldPos);
   camera.quaternion.copy(oldQuat);
   camera.fov=oldFov;
