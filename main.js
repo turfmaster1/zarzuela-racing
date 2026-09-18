@@ -827,76 +827,93 @@ function updateRaceAI(r,dt,live,leader){
   const finalAttackDistance=race.distance<=1600?440:575;
   const insideSign=interiorSignFor(r);
   const railTarget=railTargetFor(r);
+  const turn=turnIntensityFor(r);
   const straightOnly=race.distance<=1200;
-  const onFinalStraight=straightOnly||(remaining<=finalAttackDistance&&turnIntensityFor(r)<.10);
-  const inFinal=onFinalStraight; 
+  const onFinalStraight=straightOnly||(remaining<=finalAttackDistance&&turn<.10);
+  const inFinal=onFinalStraight;
 
   if(!inFinal){
-    // En 1000/1200 m no forzamos interior: son recorridos rectos.
+    // Durante curvas y recorrido: pelotón compacto junto a la cuerda.
+    // Los slots están medidos desde el rail hacia el exterior.
+    const railSlots=[.75,2.15,3.55,4.95];
     const row=r.packRow||0;
     const col=r.packCol||0;
-    const laneOffsets=[.90,2.45,4.05];
-    let packLane;
-    if(row===0)packLane=railTarget-insideSign*.85;
-    else if(row===1)packLane=railTarget-insideSign*(col===1?1.85:3.55);
-    else packLane=railTarget-insideSign*laneOffsets[col];
+    const slotIndex=row===0?0:row===1?Math.min(1,col):Math.min(2,col);
+    const preferredLane=railTarget-insideSign*railSlots[slotIndex];
 
     if(r.nextDecision<=0&&r.laneLock<=0){
       r.mergeBlocked=false;
       r.mustMerge=false;
 
       if(straightOnly){
-        // En recta pura mantiene una calle segura y no se obliga a buscar palos.
+        // 1000/1200 m: no obligamos a buscar cuerda porque el recorrido es recto.
         r.targetLateral=r.lateral;
         r.maneuver='straight-hold';
       }else{
-        // En carreras con curva, TODO caballo que salga abierto busca el interior progresivamente.
-        // No salta de golpe: va cerrándose por pasos para poder colocarse detrás de otro si hace falta.
         const metresFromRail=Math.abs(r.lateral-railTarget);
-        const mustMerge=metresFromRail>4.35;
-        const step=mustMerge?(r.distance<120?1.35:1.75):(r.distance<120?1.05:1.30);
-        const inwardLane=stepToward(r.lateral,packLane,step);
-        const smallerStep=stepToward(r.lateral,packLane,step*.55);
+        const veryWide=metresFromRail>7.0;
+        const wide=metresFromRail>5.25;
 
-        if(laneFree(r,inwardLane,4.8)){
-          r.targetLateral=inwardLane;
-          r.maneuver=mustMerge?'must-merge-inside':'merge-inside';
-        }else if(laneFree(r,smallerStep,4.0)){
-          r.targetLateral=smallerStep;
-          r.maneuver='merge-inside-slow';
+        // Al salir de cajones cerramos más deprisa; después el movimiento es más fino.
+        const mergeStep=r.distance<70?2.05:(turn>.12?1.85:1.55);
+        const desiredLane=stepToward(r.lateral,preferredLane,mergeStep);
+
+        const blockerAhead=live
+          .filter(o=>o!==r&&!o.finished)
+          .filter(o=>o.distance>r.distance&&o.distance-r.distance<5.2)
+          .sort((a,b)=>a.distance-b.distance)
+          .find(o=>Math.abs(o.lateral-desiredLane)<1.85);
+
+        if(!blockerAhead&&laneFree(r,desiredLane,4.25)){
+          r.targetLateral=desiredLane;
+          r.maneuver=veryWide?'close-hard':wide?'close-inside':'hold-rail-pack';
         }else{
-          // Si está muy abierto y no hay hueco, levanta claramente para poder meterse detrás.
-          r.targetLateral=r.lateral;
-          r.maneuver=mustMerge?'must-merge-wait':'merge-wait';
-          r.mergeBlocked=true;
-          r.mustMerge=mustMerge;
+          // Si el interior está ocupado, solo abrimos UNA calle para buscar el hueco.
+          const outwardIndex=Math.min(railSlots.length-1,slotIndex+1);
+          const outwardLane=railTarget-insideSign*railSlots[outwardIndex];
+
+          if(blockerAhead&&laneFree(r,outwardLane,4.0)){
+            r.targetLateral=stepToward(r.lateral,outwardLane,mergeStep*.85);
+            r.maneuver='one-lane-out';
+          }else{
+            // Si tampoco hay hueco, se queda detrás: no cruza caballos ni se abre media pista.
+            const smallInward=stepToward(r.lateral,preferredLane,mergeStep*.40);
+            if(laneFree(r,smallInward,3.4)){
+              r.targetLateral=smallInward;
+              r.maneuver='queue-inside';
+            }else{
+              r.targetLateral=r.lateral;
+              r.maneuver='wait-behind';
+              r.mergeBlocked=true;
+              r.mustMerge=veryWide;
+            }
+          }
         }
       }
 
-      r.laneLock=(r.mustMerge?.38:.78)+Math.random()*.18;
-      r.nextDecision=(r.mustMerge?.24:.42)+Math.random()*.16;
+      r.laneLock=(r.mustMerge?.24:.50)+Math.random()*.14;
+      r.nextDecision=(r.mustMerge?.18:.30)+Math.random()*.13;
     }
   }else if(!r.finalMoveChosen){
-    // SALIDA DEL PARDO / RECTA FINAL: busca hueco real entre interior, medio y exterior.
-    const innerLane=railTarget-insideSign*1.05;
-    const middleLane=railTarget-insideSign*4.20;
-    const outerLane=railTarget-insideSign*7.45;
+    // Recta final: aquí sí se abre el abanico buscando una salida limpia.
+    const finalSlots=[.85,2.65,4.65,6.85].map(x=>railTarget-insideSign*x);
+    const candidates=finalSlots.map((lane,i)=>({
+      name:['final-inside','final-middle','final-outside','final-wide'][i],
+      lane,
+      score:laneOpportunity(r,lane)+[1.05,.62,.25,0][i]
+    }));
 
-    const candidates=[
-      {name:'final-inside',lane:innerLane,score:laneOpportunity(r,innerLane)+1.20},
-      {name:'final-middle',lane:middleLane,score:laneOpportunity(r,middleLane)+.45},
-      {name:'final-outside',lane:outerLane,score:laneOpportunity(r,outerLane)}
-    ];
+    if(r.tactic==='closer'){
+      candidates[2].score+=.70;
+      candidates[3].score+=.45;
+    }
+    if(r.tactic==='front')candidates[0].score+=.45;
+    if(r.tactic==='stalker')candidates[1].score+=.40;
 
-    if(r.tactic==='closer')candidates[2].score+=.85;
-    if(r.tactic==='front')candidates[0].score+=.35;
-    if(r.tactic==='stalker')candidates[1].score+=.35;
-
-    // Mantener línea también es una opción si delante está limpio.
-    const currentScore=laneOpportunity(r,r.lateral)+.35;
+    const currentScore=laneOpportunity(r,r.lateral)+.30;
     const best=candidates.sort((a,b)=>b.score-a.score)[0];
 
-    if(best.score>currentScore+.15){
+    if(best.score>currentScore+.10){
       r.targetLateral=best.lane;
       r.maneuver=best.name;
     }else{
@@ -909,12 +926,14 @@ function updateRaceAI(r,dt,live,leader){
     r.nextDecision=99;
   }
 
-  const laneBlend=1-Math.exp(-(inFinal?1.05:.72)*scaledDt);
+  // Cierre más decidido hacia cuerda; apertura final más rápida para que se vean los ataques.
+  const lateralRate=inFinal?3.10:(turn>.10?2.35:1.85);
+  const laneBlend=1-Math.exp(-lateralRate*scaledDt);
   const proposedLateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
   const lateralConflict=runners.some(o=>
     o!==r&&!o.finished&&
-    Math.abs(o.distance-r.distance)<4.80&&
-    Math.abs(o.lateral-proposedLateral)<2.15
+    Math.abs(o.distance-r.distance)<4.35&&
+    Math.abs(o.lateral-proposedLateral)<1.95
   );
   if(!lateralConflict)r.lateral=proposedLateral;
 
@@ -936,10 +955,10 @@ packOrder.forEach((runner,i)=>{
   if(i===0){
     runner.packRow=0;runner.packCol=0;
   }else if(i<=2){
-    // Dos perseguidores forman el primer mini-grupo detrás del puntero.
-    runner.packRow=1;runner.packCol=i;
+    // Dos perseguidores: primera y segunda calle desde la cuerda.
+    runner.packRow=1;runner.packCol=i-1;
   }else{
-    // Después, líneas de tres claramente más retrasadas.
+    // Resto: filas de tres, siempre priorizando las tres calles interiores.
     runner.packRow=2+Math.floor((i-3)/3);
     runner.packCol=(i-3)%3;
   }
@@ -968,8 +987,8 @@ function targetSpeed(r,live,leader){
     const col=r.packCol||0;
     // Pelotón escalonado: puntero, dos cerca detrás y luego filas separadas.
     let desiredGap=0;
-    if(row===1)desiredGap=2.45+(col-1)*.75;
-    else if(row>=2)desiredGap=6.15+(row-2)*4.15+col*.55;
+    if(row===1)desiredGap=2.65+col*.75;
+    else if(row>=2)desiredGap=5.85+(row-2)*3.75+col*.45;
     const actualGap=racePaceLeader.distance-r.distance;
 
     if(r===racePaceLeader){
