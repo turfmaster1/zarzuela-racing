@@ -99,10 +99,10 @@ const REAL_JCE = {
     note:'Máximo JCE localizado: 46,5.'
   },
   rodaballo:{
-    peakValue:45.5,
+    peakValue:48.5,
     peakSource:'JCE',
-    palmares:['Gran Premio Claudio Carudel 2024 · valor 45,5'],
-    note:'Máximo JCE localizado: 45,5.'
+    palmares:['Máximo España 2021 · valor 48,5','Gran Premio Claudio Carudel 2024'],
+    note:'Máximo histórico en España: 48,5 (21/11/2021).'
   },
   fortun:{
     peakValue:41,
@@ -179,10 +179,10 @@ const REAL_JCE = {
     palmares:['Victoria 2.400 m La Zarzuela 2025','2º GP de San Sebastián 2026']
   },
   thegame:{
-    peakValue:43.5,
+    peakValue:46,
     peakSource:'JCE',
-    palmares:['Copa de Oro 2023 · valor 43,5','3º Entre Copas · Gladiateur 2022'],
-    note:'Máximo JCE localizado: 43,5.'
+    palmares:['Máximo España 2023 · valor 46','Copa de Oro 2023','3º Entre Copas · Gladiateur 2022'],
+    note:'Máximo histórico en España: 46 (07/05/2023).'
   },
   mediastorm:{
     peakValue:45.5,
@@ -191,10 +191,10 @@ const REAL_JCE = {
     note:'Máximo JCE localizado: 45,5.'
   },
   elcaney:{
-    peakValue:45.5,
-    peakSource:'JCE',
-    palmares:['Copa de Oro 2023 · valor 45,5','Ganador Entre Copas · Gladiateur 2022'],
-    note:'Máximo JCE localizado: 45,5.'
+    peakValue:null,
+    estimated:false,
+    palmares:['Gran Premio de Madrid 2023','Ganador Entre Copas · Gladiateur 2022'],
+    note:'Ganador del GP de Madrid 2023. En los listados JCE consultados aparece sin valor numérico, así que no mostramos un máximo inventado.'
   },
   kingjungle:{
     peakValue:45.5,
