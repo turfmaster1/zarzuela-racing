@@ -40,3 +40,7 @@
 .real-palmares span{font-size:10px;color:#e9eee9}
 .real-history p{font-size:9px;margin:8px 0 0;line-height:1.4;color:var(--muted)}
 .sim-title{margin-top:13px;color:#b9cbc0}
+
+.peak-value-row{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-top:9px;padding:10px 11px;border-radius:10px;background:rgba(255,255,255,.045)}
+.peak-value-row span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.peak-value-row b{font-family:Georgia,serif;font-size:28px;line-height:1;color:var(--gold)}
