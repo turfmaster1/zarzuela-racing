@@ -22,35 +22,37 @@ const JOCKEYS = [
 ];
 
 const horses = [
-  ['safaga','Safaga','Asoc. La Toledana–Becares','G. Trolley de Prévaux','intermediate',92,93,95,1900,2450,0x241815,'#08090a','#20c9c3','chestcross',{face:'star',socks:['RR']}],
-  ['estraunza','Estraunza','Becares','A. Gutiérrez V.','stayer',92,98,93,2250,2850,0x8b4325,'#f05a18','#1746b8','stripes',{face:'none',socks:[]}],
-  ['sirjan','Sirjan','Cum Laude Racing','J. Gelabert','stayer',92,99,91,2300,3100,0x211512,'#1746b8','#f05a18','stripes',{face:'blaze',socks:[]}],
-  ['elsokhna','El Sokhna','Becares','A. Gutiérrez V.','intermediate',91,93,92,1800,2400,0xa65a32,'#f05a18','#1746b8','stripes',{face:'stripe',socks:[]}],
-  ['presidency','Presidency','Presidency','V. Janáček','sprinter',97,82,97,1000,1400,0x593326,'#d71920','#ffffff','band',{face:'none',socks:[]}],
-  ['viciousharry','Vicious Harry','Vicious Harry','R. Sousa','sprinter',98,82,98,1000,1400,0x8a4d2c,'#f5f5f5','#2458b8','stripes',{face:'none',socks:[]}],
-  ['greatprospector','Great Prospector','Great Prospector','B. Fayos','sprinter',99,81,99,1000,1400,0x4f3026,'#17305f','#f5f5f5','band',{face:'none',socks:[]}],
-  ['rodaballo','Rodaballo','Rodaballo','J. L. Martínez','miler',98,88,99,1400,1800,0x30231f,'#08796d','#54c97b','quarters',{face:'star',socks:[]}],
-  ['fortun','Fortun','La Toledana','B. Fayos','intermediate',94,94,92,1800,2450,0x6a3421,'#090a0b','#090a0b','solid',{face:'none',socks:[]}],
-  ['entrecopas','Entre Copas','Cuadra África','J. L. Martínez','stayer',89,100,86,2400,4000,0x9c5731,'#aa2431','#f2d66a','band',{face:'none',socks:[]}],
-  ['amedeo','Amedeo Modigliani','Yeguada Rocío','V. Janáček','miler',98,84,97,1450,1800,0x4b2b20,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
-  ['frine','Friné','Duque de Alburquerque','J. Grosjean','stayer',94,97,94,2200,2700,0x8b8c88,'#ededeb','#722338','band',{face:'none',socks:[]}],
-  ['espoir','Espoir Avenir (FR)','Alain Maubert','E. Corallo','stayer',95,97,94,2300,2850,0x6d625a,'#235a9d','#d53838','diagonal',{face:'none',socks:[]}],
-  ['warofdance','War of Dance','Peques','R. N. Valle','stayer',94,96,93,2300,2650,0x3d241c,'#f07b26','#12a4a4','quarters',{face:'none',socks:[]}],
-  ['coetzee','Coetzee','Alex y Sofía','R. N. Valle','stayer',93,96,92,2300,2750,0x543126,'#203d87','#eadc61','band',{face:'none',socks:[]}],
-  ['naranco','Naranco','Yeguada Rocío','V. Janáček','stayer',91,95,90,2200,2650,0x35231d,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
-  ['tetuan','Tetuan','Yeguada Rocío','V. Janáček','stayer',90,96,89,2200,2850,0x2e201b,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
-  ['shackleton','Shackleton','Yeguada Rocío','I. Melgarejo','stayer',90,97,87,2300,3000,0x87482a,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
-  ['pamplona','Pamplona','Yeguada Rocío','V. Janáček','stayer',91,95,90,2200,2850,0x4b2e24,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
-  ['ifnotnow','If Not Now','Yeguada Rocío','V. Janáček','intermediate',93,92,93,1850,2350,0xa05b34,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
-  ['thegame','The Game','Cielo de Madrid','R. Sousa','stayer',93,95,92,2150,2650,0x452a22,'#72c9d7','#11181a','quarters',{face:'none',socks:[]}],
-  ['mediastorm','Media Storm','Best Horse','B. Fayos','stayer',92,96,90,2300,2750,0x6a3c28,'#17307e','#ffffff','band',{face:'none',socks:[]}],
-  ['elcaney','El Caney','Santa Bárbara','A. Gutiérrez V.','stayer',91,96,90,2250,2850,0x37231c,'#f2d64e','#168154','diagonal',{face:'none',socks:[]}],
-  ['kingjungle','King of Jungle','Yeguada Rocío','V. Janáček','sprinter',99,78,99,1000,1400,0x9a9992,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
-  ['samedi','Samedi Rien','Yeguada Rocío','V. Janáček','miler',97,85,96,1400,1800,0x603627,'#f5f5ef','#0d5c3d','stars']
+  ['safaga','Safaga','Asoc. La Toledana–Becares','G. Trolley de Prévaux','intermediate',94,94,96,1800,2450,0x17100e,'#08090a','#20c9c3','chestcross',{face:'none',socks:[]},'Castaño muy oscuro'],
+  ['estraunza','Estraunza','Becares','A. Gutiérrez V.','stayer',94,98,94,2200,2850,0x2b1a15,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Castaño oscuro'],
+  ['sirjan','Sirjan','Cum Laude Racing','J. Gelabert','stayer',95,99,94,2200,3100,0x733b24,'#1746b8','#f05a18','stripes',{face:'none',socks:[]},'Castaño rojizo'],
+  ['elsokhna','El Sokhna','Becares','A. Gutiérrez V.','intermediate',92,94,93,1800,2400,0x8e4a2c,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Alazán'],
+  ['presidency','Presidency','Presidency','V. Janáček','sprinter',97,80,97,1000,1400,0x4b2d23,'#d71920','#ffffff','band',{face:'none',socks:[]},'Castaño'],
+  ['viciousharry','Vicious Harry','Vicious Harry','R. Sousa','sprinter',99,81,99,1000,1400,0x4a2d22,'#f5f5f5','#2458b8','stripes',{face:'none',socks:[]},'Castaño'],
+  ['greatprospector','Great Prospector','Mallow Gran Canaria','B. Fayos','sprinter',99,80,98,1000,1400,0x3c261f,'#17305f','#f5f5f5','band',{face:'none',socks:[]},'Castaño'],
+  ['rodaballo','Rodaballo','Pata Negra Racing','J. L. Martínez','miler',98,89,98,1400,1800,0x34221d,'#08796d','#54c97b','quarters',{face:'none',socks:[]},'Castaño'],
+  ['fortun','Fortun','La Toledana','B. Fayos','intermediate',96,96,94,1800,2450,0x100d0c,'#090a0b','#090a0b','solid',{face:'none',socks:[]},'Negro / castaño muy oscuro'],
+  ['entrecopas','Entre Copas','Cuadra África','J. L. Martínez','stayer',90,100,87,2400,4000,0x8a4b2c,'#aa2431','#f2d66a','band',{face:'none',socks:[]},'Alazán'],
+  ['amedeo','Amedeo Modigliani','Yeguada Rocío','V. Janáček','miler',98,86,97,1450,1800,0x3a241e,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño oscuro'],
+  ['frine','Friné','Duque de Alburquerque','J. Grosjean','stayer',95,99,95,2200,2800,0x8d8b86,'#ededeb','#722338','band',{face:'none',socks:[]},'Tordo'],
+  ['espoir','Espoir Avenir (FR)','Alain Maubert','E. Corallo','stayer',96,100,94,2300,3100,0xaaa9a4,'#235a9d','#d53838','diagonal',{face:'none',socks:[]},'Tordo'],
+  ['warofdance','War of Dance','Peques','R. N. Valle','stayer',95,98,94,2250,2700,0x4a2c22,'#f07b26','#12a4a4','quarters',{face:'none',socks:[]},'Castaño'],
+  ['coetzee','Coetzee','Alex y Sofía','R. N. Valle','stayer',96,98,95,2200,2750,0x884526,'#203d87','#eadc61','band',{face:'none',socks:[]},'Alazán'],
+  ['kildare','Kildare Legend','Salvador Márquez','R. Sousa','stayer',95,97,94,1800,2600,0xa45a31,'#f5f5f5','#d71920','band',{face:'none',socks:[]},'Alazán'],
+  ['naranco','Naranco','Yeguada Rocío','V. Janáček','stayer',92,96,91,2200,2650,0x30201b,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño oscuro'],
+  ['tetuan','Tetuan','Yeguada Rocío','V. Janáček','stayer',92,97,91,2200,2850,0x402921,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
+  ['shackleton','Shackleton','Yeguada Rocío','I. Melgarejo','stayer',93,97,92,2300,3000,0x814426,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Alazán'],
+  ['pamplona','Pamplona','Yeguada Rocío','V. Janáček','stayer',92,96,91,2200,2850,0x493027,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
+  ['ifnotnow','If Not Now','Yeguada Rocío','V. Janáček','intermediate',94,93,94,1850,2350,0x94502f,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Alazán'],
+  ['thegame','The Game','Cielo de Madrid','R. Sousa','stayer',94,96,93,2150,2650,0x422920,'#72c9d7','#11181a','quarters',{face:'none',socks:[]},'Castaño'],
+  ['mediastorm','Media Storm','Best Horse','B. Fayos','stayer',93,97,91,2300,2750,0x70402a,'#17307e','#ffffff','band',{face:'none',socks:[]},'Alazán'],
+  ['elcaney','El Caney','Santa Bárbara','A. Gutiérrez V.','stayer',92,97,91,2250,2850,0x33231e,'#f2d64e','#168154','diagonal',{face:'none',socks:[]},'Castaño oscuro'],
+  ['kingjungle','King of Jungle','Yeguada Rocío','V. Janáček','sprinter',99,79,99,1000,1400,0x807e78,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Tordo oscuro'],
+  ['samedi','Samedi Rien','Yeguada Rocío','V. Janáček','miler',97,86,96,1400,1800,0x5b3427,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño']
 ].map((x,i)=>({
   id:x[0],name:x[1],stable:x[2],preferredJockey:x[3],specialty:x[4],
   speed:x[5],stamina:x[6],accel:x[7],best:[x[8],x[9]],coat:x[10],
-  silk:x[11],accent:x[12],pattern:x[13],markings:x[14]||{face:'none',socks:[]},catalogNumber:i+1
+  silk:x[11],accent:x[12],pattern:x[13],markings:x[14]||{face:'none',socks:[]},
+  coatName:x[15]||'—',catalogNumber:i+1
 }));
 
 const races = [
@@ -80,10 +82,113 @@ function distanceFit(h,d){
 function ability(h,d){const long=THREE.MathUtils.clamp((d-1200)/1800,0,1);return h.speed*(.48-.12*long)+h.stamina*(.26+.20*long)+h.accel*.26;}
 function rating(h,d){return ability(h,d)*distanceFit(h,d);}
 function currentRace(){return state.mode==='champ'?state.selectedRace:{id:'free',name:'Carrera Libre',distance:+$('freeDistance').value,venue:'Hipódromo de La Zarzuela · Madrid',favors:'Variable'};}
+function horseLevel(h){return Math.round(h.speed*.38+h.stamina*.37+h.accel*.25);}
+
+const SIM_STATS_KEY='zarzuela-racing-simstats-v1';
+let simStats=loadSimStats();
+let raceStatsSaved=false;
+
+function loadSimStats(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(SIM_STATS_KEY)||'null');
+    return saved&&typeof saved==='object'?saved:{races:0,horses:{}};
+  }catch(e){
+    return {races:0,horses:{}};
+  }
+}
+function statFor(id){
+  if(!simStats.horses)simStats.horses={};
+  if(!simStats.horses[id])simStats.horses[id]={starts:0,wins:0,seconds:0,thirds:0,podiums:0,last5:[],distanceWins:{}};
+  return simStats.horses[id];
+}
+function saveSimStats(){
+  try{localStorage.setItem(SIM_STATS_KEY,JSON.stringify(simStats));}catch(e){}
+}
+function saveRaceStats(order){
+  if(raceStatsSaved||!order.length)return;
+  raceStatsSaved=true;
+  simStats.races=(simStats.races||0)+1;
+  order.forEach((runner,i)=>{
+    const s=statFor(runner.horse.id),pos=i+1;
+    s.starts=(s.starts||0)+1;
+    if(pos===1){
+      s.wins=(s.wins||0)+1;
+      s.distanceWins=s.distanceWins||{};
+      s.distanceWins[String(race.distance)]=(s.distanceWins[String(race.distance)]||0)+1;
+    }
+    if(pos===2)s.seconds=(s.seconds||0)+1;
+    if(pos===3)s.thirds=(s.thirds||0)+1;
+    if(pos<=3)s.podiums=(s.podiums||0)+1;
+    s.last5=[{pos,race:race.name,distance:race.distance},...(s.last5||[])].slice(0,5);
+  });
+  saveSimStats();
+}
+function bestSimDistance(s){
+  const entries=Object.entries(s.distanceWins||{});
+  if(!entries.length)return '—';
+  entries.sort((a,b)=>b[1]-a[1]||(+a[0])-(+b[0]));
+  return Number(entries[0][0]).toLocaleString('es-ES')+' m';
+}
+function renderStatsScreen(){
+  const all=horses.map(h=>({h,s:statFor(h.id)}));
+  const totalStarts=all.reduce((n,x)=>n+(x.s.starts||0),0);
+  const totalWins=all.reduce((n,x)=>n+(x.s.wins||0),0);
+  $('statsSummary').innerHTML=`
+    <div><span>${simStats.races||0}</span><small>Carreras simuladas</small></div>
+    <div><span>${totalStarts}</span><small>Participaciones</small></div>
+    <div><span>${totalWins}</span><small>Victorias registradas</small></div>
+    <div><span>${horses.length}</span><small>Caballos</small></div>`;
+
+  all.sort((a,b)=>(b.s.wins||0)-(a.s.wins||0)||(b.s.podiums||0)-(a.s.podiums||0)||horseLevel(b.h)-horseLevel(a.h));
+
+  $('statsGrid').innerHTML=all.map(({h,s})=>{
+    const winPct=s.starts?Math.round((s.wins/s.starts)*100):0;
+    const podiumPct=s.starts?Math.round((s.podiums/s.starts)*100):0;
+    const coat='#'+h.coat.toString(16).padStart(6,'0');
+    const recent=(s.last5||[]).map(x=>`<span class="recent-pos p${Math.min(x.pos,4)}">${x.pos}º</span>`).join('')||'<span class="stats-empty">Sin carreras todavía</span>';
+    return `<article class="stats-card">
+      <div class="stats-card-head">
+        <div class="coat-dot" style="background:${coat}"></div>
+        <div><div class="horse-number">${SPECIALTY[h.specialty].label} · ${h.coatName}</div><h3>${h.name}</h3><p>${h.stable}</p></div>
+        <div class="level-badge"><small>NIVEL</small><b>${horseLevel(h)}</b></div>
+      </div>
+      <div class="base-stat-grid">
+        <div><span>Velocidad</span><b>${h.speed}</b></div>
+        <div><span>Fondo</span><b>${h.stamina}</b></div>
+        <div><span>Aceleración</span><b>${h.accel}</b></div>
+        <div><span>Ideal</span><b>${h.best[0].toLocaleString('es-ES')}–${h.best[1].toLocaleString('es-ES')} m</b></div>
+      </div>
+      <div class="sim-stat-grid">
+        <div><b>${s.starts||0}</b><span>Carreras</span></div>
+        <div><b>${s.wins||0}</b><span>Victorias</span></div>
+        <div><b>${s.podiums||0}</b><span>Podios</span></div>
+        <div><b>${winPct}%</b><span>Victorias</span></div>
+        <div><b>${podiumPct}%</b><span>Podios</span></div>
+        <div><b>${bestSimDistance(s)}</b><span>Mejor distancia</span></div>
+      </div>
+      <div class="recent-row"><small>ÚLTIMAS 5</small><div>${recent}</div></div>
+    </article>`;
+  }).join('');
+}
 
 function silkPreview(h){let bg;if(h.pattern==='stars')bg=`radial-gradient(circle at 30% 30%,${h.accent} 0 2px,transparent 2.5px),radial-gradient(circle at 72% 68%,${h.accent} 0 2px,transparent 2.5px),${h.silk}`;else if(h.pattern==='stripes')bg=`repeating-linear-gradient(90deg,${h.silk} 0 5px,${h.accent} 5px 10px)`;else if(h.pattern==='chestcross')bg=`linear-gradient(90deg,transparent 38%,${h.accent} 38% 62%,transparent 62%),linear-gradient(0deg,transparent 38%,${h.accent} 38% 62%,transparent 62%),${h.silk}`;else if(h.pattern==='solid')bg=h.silk;else bg=`linear-gradient(135deg,${h.silk} 0 43%,${h.accent} 44% 60%,${h.silk} 61%)`;return `<div style="width:30px;height:30px;border-radius:50%;border:2px solid ${h.accent};background:${bg}"></div>`;}
 function renderRaces(){$('raceGrid').innerHTML=races.map(r=>`<article class="race-card ${state.selectedRace?.id===r.id?'selected':''}" data-race="${r.id}"><div class="eyebrow">${r.distance.toLocaleString('es-ES')} m</div><h3>${r.name}</h3><p>${r.venue}</p><div class="race-meta"><span class="pill gold">Favorece ${r.favors}</span></div></article>`).join('');document.querySelectorAll('[data-race]').forEach(c=>c.onclick=()=>{state.selectedRace=races.find(r=>r.id===c.dataset.race);$('chooseRaceBtn').disabled=false;renderRaces();});}
-function renderHorses(){const d=currentRace().distance;$('horseGrid').innerHTML=horses.map(h=>{const sel=state.selected.has(h.id),fit=Math.round(distanceFit(h,d)*100);return `<article class="horse-card ${sel?'selected':''}" data-horse="${h.id}"><div class="select-mark">${sel?'✓':'+'}</div><div style="display:flex;gap:10px;align-items:center">${silkPreview(h)}<div><div class="horse-number">Nº ${h.catalogNumber} · ${SPECIALTY[h.specialty].label}</div><h3>${h.name}</h3></div></div><div class="horse-sub">${h.stable}<br>${h.preferredJockey}</div><div class="fitbar"><span style="width:${Math.min(100,fit)}%"></span></div><div class="stats"><div>Velocidad<b>${h.speed}</b></div><div>Resistencia<b>${h.stamina}</b></div><div>Aceleración<b>${h.accel}</b></div></div></article>`;}).join('');document.querySelectorAll('[data-horse]').forEach(c=>c.onclick=()=>{const id=c.dataset.horse;if(state.selected.has(id))state.selected.delete(id);else if(state.selected.size<12)state.selected.add(id);renderHorses();});renderSummary();}
+function renderHorses(){
+  const d=currentRace().distance;
+  $('horseGrid').innerHTML=horses.map(h=>{
+    const sel=state.selected.has(h.id),fit=Math.round(distanceFit(h,d)*100);
+    return `<article class="horse-card ${sel?'selected':''}" data-horse="${h.id}">
+      <div class="select-mark">${sel?'✓':'+'}</div>
+      <div style="display:flex;gap:10px;align-items:center">${silkPreview(h)}<div><div class="horse-number">Nº ${h.catalogNumber} · ${SPECIALTY[h.specialty].label}</div><h3>${h.name}</h3></div></div>
+      <div class="horse-sub">${h.stable}<br>${h.preferredJockey}</div>
+      <div class="horse-meta"><span>${h.coatName}</span><span>Ideal ${h.best[0].toLocaleString('es-ES')}–${h.best[1].toLocaleString('es-ES')} m</span></div>
+      <div class="fitbar"><span style="width:${Math.min(100,fit)}%"></span></div>
+      <div class="stats"><div>Nivel<b>${horseLevel(h)}</b></div><div>Velocidad<b>${h.speed}</b></div><div>Fondo<b>${h.stamina}</b></div><div>Acel.<b>${h.accel}</b></div></div>
+    </article>`;
+  }).join('');
+  document.querySelectorAll('[data-horse]').forEach(c=>c.onclick=()=>{const id=c.dataset.horse;if(state.selected.has(id))state.selected.delete(id);else if(state.selected.size<12)state.selected.add(id);renderHorses();});
+  renderSummary();
+}
 function renderSummary(){const r=currentRace();$('selectedCount').textContent=state.selected.size;$('confirmBtn').disabled=state.selected.size<6;$('raceSummary').innerHTML=`<b>${r.name}</b><br>${r.distance.toLocaleString('es-ES')} m`;$('selectedList').innerHTML=horses.filter(h=>state.selected.has(h.id)).map(h=>`<div class="selected-item"><b>${h.catalogNumber}. ${h.name}</b><span>${SPECIALTY[h.specialty].label}</span></div>`).join('');}
 function openSelection(mode){state.mode=mode;state.selected.clear();$('selectionModeLabel').textContent=mode==='champ'?'Modo Campeonato':'Carrera Libre';$('freeDistanceControl').style.display=mode==='free'?'flex':'none';renderHorses();show('selectionScreen');}
 $('freeBtn').onclick=()=>openSelection('free');
@@ -566,7 +671,7 @@ function updateRaceAI(r,dt,live,leader){
 }
 function placeRunner(r,gatePose=false){const fraction=THREE.MathUtils.clamp(r.distance/race.distance,0,1),p=route.getPointAtFraction(fraction),tan=route.getTangentAtFraction(fraction),side=new THREE.Vector3(-tan.z,0,tan.x).normalize();const target=p.clone().addScaledVector(side,r.lateral);if(gatePose)target.addScaledVector(tan,-1.25);target.y=.05;r.root.position.copy(target);r.root.rotation.y=Math.atan2(tan.x,tan.z);}
 
-async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;racePaceLeader=null;lastRankRender=0;smoothCameraFocusReady=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;state.manualCamera=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finalLaneChosen:false,finalMoveChosen:false,packSlot:0,packRow:0,packCol:0,finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});
+async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;racePaceLeader=null;lastRankRender=0;raceStatsSaved=false;smoothCameraFocusReady=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;state.manualCamera=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finalLaneChosen:false,finalMoveChosen:false,packSlot:0,packRow:0,packCol:0,finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});
 const paceCandidates=runners.filter(x=>x.tactic==='front');
 racePaceLeader=(paceCandidates.length?paceCandidates[Math.floor(Math.random()*paceCandidates.length)]:runners[0])||null;
 const packOrder=[racePaceLeader,...runners.filter(x=>x!==racePaceLeader).sort((a,b)=>{
@@ -812,6 +917,7 @@ function createRaceMemoryCard(r,winnerHorse){
 }
 function results(){
   const rr=[...finishOrder],winner=rr[0]?.time||0;
+  saveRaceStats(rr);
   $('resultTitle').textContent=race.name;
   $('resultSubtitle').textContent=race.distance.toLocaleString('es-ES')+' m · '+race.venue;
   $('photoFinish').src=snapshot;
@@ -840,6 +946,8 @@ $('menuFromResults').onclick=()=>show('mainMenu');
 $('repeatBtn').onclick=()=>startRace(state.lastField,currentRace());
 $('anotherBtn').onclick=()=>show(state.mode==='champ'?'championshipMenu':'selectionScreen');
 
+if($('statsBtn'))$('statsBtn').onclick=()=>{renderStatsScreen();show('statsScreen');};
+if($('statsBack'))$('statsBack').onclick=()=>show('mainMenu');
 if($('trophiesBtn'))$('trophiesBtn').onclick=()=>show('trophiesScreen');
 if($('trophiesBack'))$('trophiesBack').onclick=()=>show('mainMenu');
 renderRaces();renderHorses();
