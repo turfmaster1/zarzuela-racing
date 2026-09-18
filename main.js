@@ -77,8 +77,8 @@ const REAL_JCE = {
   elsokhna:{
     peakValue:41,
     peakSource:'JCE',
-    palmares:['Turismo Gobierno Vasco 2022 · valor 41','Irizar 2022 · valor 41'],
-    note:'Máximo JCE localizado: 41.'
+    palmares:['Victorias entre 1.200 y 1.600 m'],
+    note:'Máximo JCE localizado: 41. Fue 4º en el Gobierno Vasco, donde alcanzó ese valor.'
   },
   presidency:{
     peakValue:45.5,
@@ -228,6 +228,50 @@ const REAL_JCE = {
   }
 };
 
+const TRACK_CONDITION = {
+  hard:{label:'Duro / rápido', pace:1.006, fatigue:.94},
+  normal:{label:'Bueno / normal', pace:1, fatigue:1},
+  heavy:{label:'Pesado', pace:.982, fatigue:1.13}
+};
+
+const TERRAIN_PROFILE = {
+  safaga:{hard:1.010,normal:1.004,heavy:.994},
+  estraunza:{hard:1.000,normal:1.004,heavy:1.008},
+  sirjan:{hard:.997,normal:1.004,heavy:1.012},
+  fortun:{hard:.995,normal:1.003,heavy:1.012},
+  entrecopas:{hard:.992,normal:1.002,heavy:1.016},
+  frine:{hard:1.000,normal:1.006,heavy:1.012},
+  espoir:{hard:1.000,normal:1.005,heavy:1.010},
+  warofdance:{hard:1.004,normal:1.004,heavy:1.000},
+  naranco:{hard:1.010,normal:1.006,heavy:.988},
+  coetzee:{hard:.995,normal:1.003,heavy:1.014},
+  thegame:{hard:.997,normal:1.004,heavy:1.010},
+  elcaney:{hard:.996,normal:1.003,heavy:1.010},
+  mediastorm:{hard:.998,normal:1.004,heavy:1.008},
+  pamplona:{hard:1.000,normal:1.004,heavy:1.007},
+  tetuan:{hard:1.002,normal:1.004,heavy:1.004},
+  shackleton:{hard:.998,normal:1.003,heavy:1.008},
+  viciousharry:{hard:1.012,normal:1.005,heavy:.985},
+  rodaballo:{hard:1.010,normal:1.005,heavy:.990},
+  presidency:{hard:1.010,normal:1.004,heavy:.988},
+  greatprospector:{hard:1.008,normal:1.004,heavy:.990},
+  samedi:{hard:1.006,normal:1.005,heavy:.994},
+  kingjungle:{hard:1.008,normal:1.004,heavy:.990},
+  amedeo:{hard:1.006,normal:1.004,heavy:.994},
+  ifnotnow:{hard:.998,normal:1.003,heavy:1.006},
+  elsokhna:{hard:1.005,normal:1.003,heavy:.994}
+};
+
+const RIVALRY_EDGE = {
+  'safaga|warofdance':.0045,
+  'warofdance|safaga':-.0015,
+  'fortun|frine':.0025,
+  'frine|fortun':.0025,
+  'estraunza|sirjan':.0025,
+  'sirjan|estraunza':.0025,
+  'estraunza|tetuan':.0030,
+  'tetuan|estraunza':-.0005
+};
 
 const races = [
   ['gpm','Gran Premio de Madrid',2500,'Hipódromo de La Zarzuela · Madrid','Fondistas'],
@@ -240,7 +284,7 @@ const races = [
   ['beamonte','Gran Premio Beamonte · Oaks',2400,'Hipódromo de La Zarzuela · Madrid','Fondistas']
 ].map(x=>({id:x[0],name:x[1],distance:x[2],venue:x[3],favors:x[4]}));
 
-const state={mode:'free',selectedRace:null,selected:new Set(),lastField:[],raceSpeed:1,cameraMode:0,paused:false,manualCamera:false};
+const state={mode:'free',selectedRace:null,selected:new Set(),lastField:[],raceSpeed:1,cameraMode:0,paused:false,manualCamera:false,trackCondition:'normal'};
 
 function distanceFit(h,d){
   const s=SPECIALTY[h.specialty];
@@ -254,8 +298,18 @@ function distanceFit(h,d){
   return THREE.MathUtils.clamp(f,.89,1.015);
 }
 function ability(h,d){const long=THREE.MathUtils.clamp((d-1200)/1800,0,1);return h.speed*(.48-.12*long)+h.stamina*(.26+.20*long)+h.accel*.26;}
-function rating(h,d){return ability(h,d)*distanceFit(h,d);}
-function currentRace(){return state.mode==='champ'?state.selectedRace:{id:'free',name:'Carrera Libre',distance:+$('freeDistance').value,venue:'Hipódromo de La Zarzuela · Madrid',favors:'Variable'};}
+function terrainFit(h,condition=state.trackCondition){
+  const profile=TERRAIN_PROFILE[h.id];
+  return profile?.[condition]??1;
+}
+function rivalryBoost(h,field){
+  if(!field?.length)return 0;
+  let boost=0;
+  field.forEach(o=>{if(o.id!==h.id)boost+=RIVALRY_EDGE[h.id+'|'+o.id]||0;});
+  return THREE.MathUtils.clamp(boost,-.006,.006);
+}
+function rating(h,d){return ability(h,d)*distanceFit(h,d)*terrainFit(h);}
+function currentRace(){return state.mode==='champ'?{...state.selectedRace,condition:state.trackCondition}:{id:'free',name:'Carrera Libre',distance:+$('freeDistance').value,venue:'Hipódromo de La Zarzuela · Madrid',favors:'Variable',condition:state.trackCondition};}
 function horseLevel(h){return Math.round(h.speed*.38+h.stamina*.37+h.accel*.25);}
 
 const SIM_STATS_KEY='zarzuela-racing-simstats-v1';
@@ -387,7 +441,7 @@ function renderHorses(){
   document.querySelectorAll('[data-horse]').forEach(c=>c.onclick=()=>{const id=c.dataset.horse;if(state.selected.has(id))state.selected.delete(id);else if(state.selected.size<12)state.selected.add(id);renderHorses();});
   renderSummary();
 }
-function renderSummary(){const r=currentRace();$('selectedCount').textContent=state.selected.size;$('confirmBtn').disabled=state.selected.size<6;$('raceSummary').innerHTML=`<b>${r.name}</b><br>${r.distance.toLocaleString('es-ES')} m`;$('selectedList').innerHTML=horses.filter(h=>state.selected.has(h.id)).map(h=>`<div class="selected-item"><b>${h.catalogNumber}. ${h.name}</b><span>${SPECIALTY[h.specialty].label}</span></div>`).join('');}
+function renderSummary(){const r=currentRace();$('selectedCount').textContent=state.selected.size;$('confirmBtn').disabled=state.selected.size<6;$('raceSummary').innerHTML=`<b>${r.name}</b><br>${r.distance.toLocaleString('es-ES')} m · ${TRACK_CONDITION[state.trackCondition].label}`;$('selectedList').innerHTML=horses.filter(h=>state.selected.has(h.id)).map(h=>`<div class="selected-item"><b>${h.catalogNumber}. ${h.name}</b><span>${SPECIALTY[h.specialty].label}</span></div>`).join('');}
 function openSelection(mode){state.mode=mode;state.selected.clear();$('selectionModeLabel').textContent=mode==='champ'?'Modo Campeonato':'Carrera Libre';$('freeDistanceControl').style.display=mode==='free'?'flex':'none';renderHorses();show('selectionScreen');}
 $('freeBtn').onclick=()=>openSelection('free');
 $('champBtn').onclick=()=>{state.mode='champ';state.selectedRace=null;$('chooseRaceBtn').disabled=true;renderRaces();show('championshipMenu');};
@@ -395,6 +449,7 @@ $('chooseRaceBtn').onclick=()=>openSelection('champ');
 document.querySelectorAll('[data-go="mainMenu"]').forEach(b=>b.onclick=()=>show('mainMenu'));
 $('selectionBack').onclick=()=>show(state.mode==='champ'?'championshipMenu':'mainMenu');
 $('freeDistance').onchange=renderHorses;
+if($('trackCondition'))$('trackCondition').onchange=()=>{state.trackCondition=$('trackCondition').value;renderHorses();};
 $('randomBtn').onclick=()=>{state.selected.clear();[...horses].sort(()=>Math.random()-.5).slice(0,8).forEach(h=>state.selected.add(h.id));renderHorses();};
 $('bestBtn').onclick=()=>{const d=currentRace().distance;state.selected.clear();[...horses].sort((a,b)=>rating(b,d)-rating(a,d)).slice(0,10).forEach(h=>state.selected.add(h.id));renderHorses();};
 
@@ -869,7 +924,7 @@ function updateRaceAI(r,dt,live,leader){
 }
 function placeRunner(r,gatePose=false){const fraction=THREE.MathUtils.clamp(r.distance/race.distance,0,1),p=route.getPointAtFraction(fraction),tan=route.getTangentAtFraction(fraction),side=new THREE.Vector3(-tan.z,0,tan.x).normalize();const target=p.clone().addScaledVector(side,r.lateral);if(gatePose)target.addScaledVector(tan,-1.25);target.y=.05;r.root.position.copy(target);r.root.rotation.y=Math.atan2(tan.x,tan.z);}
 
-async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;racePaceLeader=null;lastRankRender=0;raceStatsSaved=false;smoothCameraFocusReady=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;state.manualCamera=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finalLaneChosen:false,finalMoveChosen:false,packSlot:0,packRow:0,packCol:0,finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});
+async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race={...r,condition:state.trackCondition};route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;racePaceLeader=null;lastRankRender=0;raceStatsSaved=false;smoothCameraFocusReady=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;state.manualCamera=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue+' · '+TRACK_CONDITION[state.trackCondition].label;$('commentary').textContent='Participantes cargados. Terreno: '+TRACK_CONDITION[state.trackCondition].label+'. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance)*distanceFit(h,r.distance)*terrainFit(h),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finalLaneChosen:false,finalMoveChosen:false,packSlot:0,packRow:0,packCol:0,finished:false,time:null,form:(Math.random()-.5)*.012,rivalry:rivalryBoost(h,assigned),phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});
 const paceCandidates=runners.filter(x=>x.tactic==='front');
 racePaceLeader=(paceCandidates.length?paceCandidates[Math.floor(Math.random()*paceCandidates.length)]:runners[0])||null;
 const packOrder=[racePaceLeader,...runners.filter(x=>x!==racePaceLeader).sort((a,b)=>{
@@ -893,8 +948,10 @@ createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$(
 
 function targetSpeed(r,live,leader){
   const d=race.distance,h=r.horse,progress=r.distance/d,remaining=d-r.distance;
-  const base=d<=1200?17.8:d<=1600?17.35:d<=2000?17.0:d<=2500?16.65:16.3;
-  let factor=(1+(ability(h,d)-fieldAbility)*.00110)*(1+(distanceFit(h,d)-.98)*.38)*(1+r.form);
+  const condition=TRACK_CONDITION[race.condition]||TRACK_CONDITION.normal;
+  const base=(d<=1200?17.8:d<=1600?17.35:d<=2000?17.0:d<=2500?16.65:16.3)*condition.pace;
+  const adjustedAbility=ability(h,d)*distanceFit(h,d)*terrainFit(h,race.condition);
+  let factor=(1+(adjustedAbility-fieldAbility)*.00078)*(1+r.form+r.rivalry);
   const effortSpeed=.79+r.effort*.21;
   factor*=effortSpeed;
   factor*=.968+.032*r.energy;
@@ -952,12 +1009,12 @@ function targetSpeed(r,live,leader){
   if(!finalStraight)factor*=railEfficiencyFor(r);
   else factor*=THREE.MathUtils.lerp(1,railEfficiencyFor(r),.06);
 
-  const fatigue=progress*progress*Math.max(0,94-h.stamina)*.00056*(d>=2200?1.12:.70);
+  const fatigue=progress*progress*Math.max(0,94-h.stamina)*.00056*(d>=2200?1.12:.70)*condition.fatigue;
   factor-=fatigue;
   if(remaining<300)factor*=1+(1-remaining/300)*(h.accel-88)*.00135;
   factor*=1+Math.sin(elapsed*.9+r.phase)*.0012;
   const min=h.specialty==='sprinter'&&d>=2400?.90:.91;
-  return base*THREE.MathUtils.clamp(factor,min,1.055);
+  return base*THREE.MathUtils.clamp(factor,min,1.05);
 }
 function captureFinishPhoto(){
   const oldPos=camera.position.clone(),oldQuat=camera.quaternion.clone(),oldFov=camera.fov;
