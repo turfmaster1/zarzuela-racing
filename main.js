@@ -168,8 +168,34 @@ function buildWorld(){if(worldBuilt)return;worldBuilt=true;const dirt=createDirt
 class RaceRoute{constructor(points){this.points=points;this.lengths=[];this.cumulative=[0];this.totalLength=0;for(let i=0;i<points.length-1;i++){const l=points[i].distanceTo(points[i+1]);this.lengths.push(l);this.totalLength+=l;this.cumulative.push(this.totalLength);}}getPointAtFraction(f){const wanted=THREE.MathUtils.clamp(f,0,1)*this.totalLength;let lo=0,hi=this.lengths.length-1,idx=hi;while(lo<=hi){const mid=(lo+hi)>>1;if(this.cumulative[mid+1]>=wanted){idx=mid;hi=mid-1;}else lo=mid+1;}const start=this.cumulative[idx],len=this.lengths[idx]||1,local=THREE.MathUtils.clamp((wanted-start)/len,0,1);return new THREE.Vector3().lerpVectors(this.points[idx],this.points[idx+1],local);}getTangentAtFraction(f){const a=this.getPointAtFraction(Math.max(0,f-.001)),b=this.getPointAtFraction(Math.min(1,f+.001));return b.sub(a).normalize();}}
 function sampleCurveSegment(curve,u0,u1,count,pts){for(let i=0;i<=count;i++)pts.push(curve.getPointAt(THREE.MathUtils.lerp(u0,u1,i/count)).setY(.7));}
 function sampleLine(x0,z0,x1,z1,count,pts){for(let i=0;i<=count;i++){const t=i/count;pts.push(new THREE.Vector3(THREE.MathUtils.lerp(x0,x1,t),.7,THREE.MathUtils.lerp(z0,z1,t)));}}
-function buildOriginalShortRoute(d){const pts=[];if(d<=1200){sampleLine(FINISH_X-d,BOTTOM_Z,FINISH_X,BOTTOM_Z,180,pts);return new RaceRoute(pts);}const startU=d<=1400?LONG_START_U[1400]:LONG_START_U[1600];sampleCurveSegment(mainCourseCurve,startU,PARDO_JOIN_U,240,pts);sampleLine(PARDO_JOIN_X,BOTTOM_Z,FINISH_X,BOTTOM_Z,160,pts);return new RaceRoute(pts);}
-function buildClosedLapSamples(){const pts=[];sampleLine(FINISH_X,BOTTOM_Z,TRACK_END_EXTENSION,BOTTOM_Z,20,pts);sampleCurveSegment(mainCourseCurve,0,PARDO_JOIN_U,500,pts);sampleLine(PARDO_JOIN_X,BOTTOM_Z,FINISH_X,BOTTOM_Z,180,pts);return pts;}
+const PARDO_EXIT_START_U=Math.max(0,PARDO_JOIN_U-.040);
+const PARDO_EXIT_END_X=PARDO_JOIN_X+105;
+function samplePardoExit(pts){
+  const p0=mainCourseCurve.getPointAt(PARDO_EXIT_START_U).setY(.7);
+  const t0=mainCourseCurve.getTangentAt(PARDO_EXIT_START_U).setY(0).normalize();
+  const p3=new THREE.Vector3(PARDO_EXIT_END_X,.7,BOTTOM_Z);
+  const c1=p0.clone().addScaledVector(t0,58);
+  const c2=p3.clone().add(new THREE.Vector3(-66,0,0));
+  const transition=new THREE.CubicBezierCurve3(p0,c1,c2,p3);
+  for(let i=1;i<=120;i++)pts.push(transition.getPoint(i/120));
+}
+function buildOriginalShortRoute(d){
+  const pts=[];
+  if(d<=1200){sampleLine(FINISH_X-d,BOTTOM_Z,FINISH_X,BOTTOM_Z,180,pts);return new RaceRoute(pts);}
+  const startU=d<=1400?LONG_START_U[1400]:LONG_START_U[1600];
+  sampleCurveSegment(mainCourseCurve,startU,PARDO_EXIT_START_U,220,pts);
+  samplePardoExit(pts);
+  sampleLine(PARDO_EXIT_END_X,BOTTOM_Z,FINISH_X,BOTTOM_Z,150,pts);
+  return new RaceRoute(pts);
+}
+function buildClosedLapSamples(){
+  const pts=[];
+  sampleLine(FINISH_X,BOTTOM_Z,TRACK_END_EXTENSION,BOTTOM_Z,20,pts);
+  sampleCurveSegment(mainCourseCurve,0,PARDO_EXIT_START_U,450,pts);
+  samplePardoExit(pts);
+  sampleLine(PARDO_EXIT_END_X,BOTTOM_Z,FINISH_X,BOTTOM_Z,150,pts);
+  return pts;
+}
 const CLOSED_LAP=buildClosedLapSamples();
 const CLOSED_LAP_ROUTE=new RaceRoute(CLOSED_LAP);
 function buildMidLongRoute(d){
@@ -352,13 +378,30 @@ function turnIntensityFor(r){
 function railEfficiencyFor(r){
   const rail=railTargetFor(r);
   const metresFromRail=Math.abs(r.lateral-rail);
-  const wide=THREE.MathUtils.clamp((metresFromRail-1.2)/10.5,0,1);
+  const wide=THREE.MathUtils.clamp((metresFromRail-1.0)/11.0,0,1);
   const turn=turnIntensityFor(r);
-  return 1-wide*(.0035+.0215*turn);
+  // En curva el exterior recorre claramente más: el castigo llega a ~4.5% en la calle más abierta.
+  return 1-wide*(.0045+.0405*turn);
 }
 function stepToward(value,target,step){
   if(Math.abs(target-value)<=step)return target;
   return value+Math.sign(target-value)*step;
+}
+function laneOpportunity(r,lane){
+  const limit=TRACK_WIDTH/2-2.1;
+  if(Math.abs(lane)>limit)return -999;
+  let score=0;
+  for(const o of runners){
+    if(o===r||o.finished)continue;
+    const longitudinal=o.distance-r.distance;
+    const lateral=Math.abs(o.lateral-lane);
+    if(lateral<1.65){
+      if(longitudinal>0&&longitudinal<3.0)score-=8;
+      else if(longitudinal>0&&longitudinal<7.0)score-=3.5;
+      else if(Math.abs(longitudinal)<4.0)score-=2.0;
+    }
+  }
+  return score;
 }
 function updateRaceAI(r,dt,live,leader){
   const scaledDt=dt*state.raceSpeed;
@@ -366,58 +409,64 @@ function updateRaceAI(r,dt,live,leader){
   r.laneLock=Math.max(0,r.laneLock-scaledDt);
 
   const remaining=race.distance-r.distance;
-  const finalAttackDistance=race.distance<=1600?430:560;
+  const finalAttackDistance=race.distance<=1600?440:575;
   const inFinal=remaining<=finalAttackDistance;
   const insideSign=interiorSignFor(r);
-  const outsideSign=-insideSign;
   const railTarget=railTargetFor(r);
 
   if(!inFinal){
-    // FASE DE GRUPO: un puntero y el resto compactos detrás, sin ataques prematuros.
-    const column=(r.packSlot||0)%3;
-    const targetPackLane=railTarget-insideSign*(1.1+column*1.95);
+    // GRUPO ESCALONADO: puntero, primera línea, segunda línea, etc.
+    // Cada fila tiene hasta 3 caballos y todos ocupan preferentemente las calles interiores.
+    const row=r.packRow||0;
+    const col=r.packCol||0;
+    const laneOffsets=[1.05,3.10,5.15];
+    const packLane=railTarget-insideSign*laneOffsets[col];
 
     if(r.nextDecision<=0&&r.laneLock<=0){
-      if(laneFree(r,targetPackLane,6.5)){
-        r.targetLateral=targetPackLane;
-        r.maneuver='pack';
+      if(laneFree(r,packLane,5.8)){
+        r.targetLateral=packLane;
+        r.maneuver='pack-row';
       }else{
         r.targetLateral=r.lateral;
         r.maneuver='pack-hold';
       }
-      r.laneLock=1.6+Math.random()*.45;
-      r.nextDecision=.85+Math.random()*.35;
+      r.laneLock=1.45+Math.random()*.35;
+      r.nextDecision=.80+Math.random()*.30;
     }
-  }else{
-    // RECTA FINAL: una sola decisión clara. Interior, exterior o mantener línea.
-    if(!r.finalMoveChosen){
-      const inLane=stepToward(r.lateral,railTarget,2.35);
-      const outLane=r.lateral+outsideSign*2.55;
-      const inFree=laneFree(r,inLane,7.0);
-      const outFree=laneFree(r,outLane,7.0);
-      const roll=Math.random();
+  }else if(!r.finalMoveChosen){
+    // SALIDA DEL PARDO / RECTA FINAL: busca hueco real entre interior, medio y exterior.
+    const innerLane=railTarget-insideSign*1.05;
+    const middleLane=railTarget-insideSign*4.20;
+    const outerLane=railTarget-insideSign*7.45;
 
-      if(r.tactic==='closer'&&outFree&&roll<.58){
-        r.targetLateral=outLane;
-        r.maneuver='final-outside';
-      }else if(inFree&&roll<.48){
-        r.targetLateral=inLane;
-        r.maneuver='final-inside';
-      }else if(outFree&&roll<.76){
-        r.targetLateral=outLane;
-        r.maneuver='final-outside';
-      }else{
-        r.targetLateral=r.lateral;
-        r.maneuver='final-hold';
-      }
+    const candidates=[
+      {name:'final-inside',lane:innerLane,score:laneOpportunity(r,innerLane)+1.20},
+      {name:'final-middle',lane:middleLane,score:laneOpportunity(r,middleLane)+.45},
+      {name:'final-outside',lane:outerLane,score:laneOpportunity(r,outerLane)}
+    ];
 
-      r.finalMoveChosen=true;
-      r.laneLock=99;
-      r.nextDecision=99;
+    if(r.tactic==='closer')candidates[2].score+=.85;
+    if(r.tactic==='front')candidates[0].score+=.35;
+    if(r.tactic==='stalker')candidates[1].score+=.35;
+
+    // Mantener línea también es una opción si delante está limpio.
+    const currentScore=laneOpportunity(r,r.lateral)+.35;
+    const best=candidates.sort((a,b)=>b.score-a.score)[0];
+
+    if(best.score>currentScore+.15){
+      r.targetLateral=best.lane;
+      r.maneuver=best.name;
+    }else{
+      r.targetLateral=r.lateral;
+      r.maneuver='final-hold';
     }
+
+    r.finalMoveChosen=true;
+    r.laneLock=99;
+    r.nextDecision=99;
   }
 
-  const laneBlend=1-Math.exp(-(inFinal?1.15:.78)*scaledDt);
+  const laneBlend=1-Math.exp(-(inFinal?1.05:.72)*scaledDt);
   r.lateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
 
   r.effort=effortFor(r);
@@ -426,14 +475,18 @@ function updateRaceAI(r,dt,live,leader){
 }
 function placeRunner(r,gatePose=false){const fraction=THREE.MathUtils.clamp(r.distance/race.distance,0,1),p=route.getPointAtFraction(fraction),tan=route.getTangentAtFraction(fraction),side=new THREE.Vector3(-tan.z,0,tan.x).normalize();const target=p.clone().addScaledVector(side,r.lateral);if(gatePose)target.addScaledVector(tan,-1.25);target.y=.05;r.root.position.copy(target);r.root.rotation.y=Math.atan2(tan.x,tan.z);}
 
-async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;racePaceLeader=null;lastRankRender=0;smoothCameraFocusReady=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;state.manualCamera=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finalLaneChosen:false,finalMoveChosen:false,packSlot:0,finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});
+async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;racePaceLeader=null;lastRankRender=0;smoothCameraFocusReady=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;state.manualCamera=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finalLaneChosen:false,finalMoveChosen:false,packSlot:0,packRow:0,packCol:0,finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});
 const paceCandidates=runners.filter(x=>x.tactic==='front');
 racePaceLeader=(paceCandidates.length?paceCandidates[Math.floor(Math.random()*paceCandidates.length)]:runners[0])||null;
 const packOrder=[racePaceLeader,...runners.filter(x=>x!==racePaceLeader).sort((a,b)=>{
   const priority={front:0,stalker:1,closer:2};
   return (priority[a.tactic]??1)-(priority[b.tactic]??1) || rating(b.horse,r.distance)-rating(a.horse,r.distance);
 })];
-packOrder.forEach((runner,i)=>runner.packSlot=i);
+packOrder.forEach((runner,i)=>{
+  runner.packSlot=i;
+  if(i===0){runner.packRow=0;runner.packCol=0;}
+  else{runner.packRow=1+Math.floor((i-1)/3);runner.packCol=(i-1)%3;}
+});
 createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$('loadOverlay').classList.add('hidden');startTime=performance.now();last=performance.now();raf=requestAnimationFrame(loop);}
 
 function targetSpeed(r,live,leader){
@@ -449,25 +502,24 @@ function targetSpeed(r,live,leader){
     .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&Math.abs(o.lateral-r.lateral)<1.80)
     .sort((a,b)=>a.distance-b.distance)[0];
 
-  const finalAttackDistance=d<=1600?430:560;
+  const finalAttackDistance=d<=1600?440:575;
   const packPhase=remaining>finalAttackDistance;
   if(packPhase&&racePaceLeader){
-    const slot=r.packSlot||0;
-    const desiredGap=slot===0?0:Math.min(8.4,.85+slot*.68);
+    const row=r.packRow||0;
+    const col=r.packCol||0;
+    // Puntero ~1.6 m delante; cada fila posterior queda ~2.2 m detrás de la anterior.
+    const desiredGap=row===0?0:1.55+(row-1)*2.20+col*.10;
     const actualGap=racePaceLeader.distance-r.distance;
 
     if(r===racePaceLeader){
       const second=live.find(o=>o!==r);
-      if(second&&r.distance-second.distance>3.2)factor*=.986;
-      else factor*=1.004;
+      if(second&&r.distance-second.distance>2.8)factor*=.984;
+      else factor*=1.003;
     }else{
-      // Mantiene el grupo comprimido: recupera si queda atrás y frena si se echa encima.
       const error=actualGap-desiredGap;
-      if(error>0)factor*=1+Math.min(.048,error*.0060);
-      else factor*=1-Math.min(.045,Math.abs(error)*.0070);
-
-      // Antes de la recta nadie debe quitarle claramente la punta al puntero.
-      if(r.distance>racePaceLeader.distance-.55)factor*=.955;
+      if(error>0)factor*=1+Math.min(.055,error*.010);
+      else factor*=1-Math.min(.050,Math.abs(error)*.011);
+      if(r.distance>racePaceLeader.distance-.65)factor*=.945;
     }
   }else if(remaining>220){
     if(gapToLeader>6)factor*=1+Math.min(.020,(gapToLeader-6)*.0008);
@@ -488,9 +540,9 @@ function targetSpeed(r,live,leader){
 
   if(r.blocked)factor*=.990;
 
-  // En carrera normal ir abierto cuesta; en la recta final se permite atacar por fuera sin castigo excesivo.
-  if(remaining>(d<=1600?430:560))factor*=railEfficiencyFor(r);
-  else factor*=THREE.MathUtils.lerp(1,railEfficiencyFor(r),.30);
+  // En curva, el interior tiene ventaja real por recorrer menos. En la recta se neutraliza casi por completo.
+  if(remaining>(d<=1600?440:575))factor*=railEfficiencyFor(r);
+  else factor*=THREE.MathUtils.lerp(1,railEfficiencyFor(r),.12);
 
   const fatigue=progress*progress*Math.max(0,94-h.stamina)*.00056*(d>=2200?1.12:.70);
   factor-=fatigue;
