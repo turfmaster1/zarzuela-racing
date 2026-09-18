@@ -59,7 +59,7 @@ const races = [
   ['beamonte','Gran Premio Beamonte · Oaks',2400,'Hipódromo de La Zarzuela · Madrid','Fondistas']
 ].map(x=>({id:x[0],name:x[1],distance:x[2],venue:x[3],favors:x[4]}));
 
-const state={mode:'free',selectedRace:null,selected:new Set(),lastField:[],raceSpeed:1,cameraMode:0,paused:false};
+const state={mode:'free',selectedRace:null,selected:new Set(),lastField:[],raceSpeed:1,cameraMode:0,paused:false,manualCamera:false};
 
 function distanceFit(h,d){
   const s=SPECIALTY[h.specialty];
@@ -94,7 +94,10 @@ $('bestBtn').onclick=()=>{const d=currentRace().distance;state.selected.clear();
 // ESCENA: geometría basada en la versión La Zarzuela aportada
 // ============================================================
 let scene,camera,renderer,orbitControls,horseTemplate,horseClips={},worldBuilt=false;
-let race=null,runners=[],route=null,gateGroup=null,raf=0,last=0,startTime=0,elapsed=0,running=false,finished=false,finishOrder=[],snapshot='',fieldAbility=0,finishPhotoPending=false;
+let race=null,runners=[],route=null,gateGroup=null,raf=0,last=0,startTime=0,elapsed=0,running=false,finished=false,finishOrder=[],snapshot='',fieldAbility=0,finishPhotoPending=false,racePaceLeader=null,lastRankRender=0;
+const manualCameraOffset=new THREE.Vector3();
+const smoothCameraFocus=new THREE.Vector3();
+let smoothCameraFocusReady=false;
 const loader=new GLTFLoader();
 const host=$('webglHost');
 const TRACK_WIDTH=30,TRACK_LENGTH=1000,FINISH_X=205,START_X=FINISH_X-TRACK_LENGTH,PARDO_JOIN_X=START_X+400;
@@ -344,7 +347,7 @@ function stepToward(value,target,step){
   if(Math.abs(target-value)<=step)return target;
   return value+Math.sign(target-value)*step;
 }
-function updateRaceAI(r,dt){
+function updateRaceAI(r,dt,live,leader){
   const scaledDt=dt*state.raceSpeed;
   r.nextDecision-=scaledDt;
   r.laneLock=Math.max(0,r.laneLock-scaledDt);
@@ -354,8 +357,6 @@ function updateRaceAI(r,dt){
   const railTarget=railTargetFor(r);
 
   if(r.nextDecision<=0){
-    const live=sorted();
-    const leader=live[0];
     const gapToLeader=Math.max(0,(leader?.distance||r.distance)-r.distance);
     const metresFromRail=Math.abs(r.lateral-railTarget);
     const blockers=runners
@@ -390,7 +391,6 @@ function updateRaceAI(r,dt){
         const inLane=r.lateral+insideSign*1.90;
         const hasInnerRoom=Math.abs(inLane)<=TRACK_WIDTH/2-2.2;
 
-        // Maniobra preferida: abrirse por fuera. Si no hay sitio y aparece hueco interior, se mete por dentro.
         if(laneFree(r,outLane,7.2)){
           r.targetLateral=outLane;
           r.maneuver='outside-pass';
@@ -405,16 +405,33 @@ function updateRaceAI(r,dt){
           r.laneLock=.55;
         }
       }else{
-        // Sin tráfico delante, todos intentan colocarse progresivamente hacia los palos.
-        const nextRailLane=stepToward(r.lateral,railTarget,r.maneuver==='outside-pass'?2.25:1.95);
-        if(laneFree(r,nextRailLane,5.6)){
-          r.targetLateral=nextRailLane;
-          r.maneuver='rail';
-          r.laneLock=.78+Math.random()*.28;
+        const finalZone=remaining<(race.distance<=1600?450:600);
+
+        if(finalZone&&!r.finalLaneChosen){
+          const outLane=r.lateral+outsideSign*2.0;
+          const wantsOutside=r.tactic==='closer'||(r.tactic==='stalker'&&r.horse.accel>=94);
+          if(wantsOutside&&laneFree(r,outLane,6.5)){
+            r.targetLateral=outLane;
+            r.maneuver='final-outside';
+            r.laneLock=1.05+Math.random()*.30;
+          }else{
+            const nextRailLane=stepToward(r.lateral,railTarget,1.9);
+            if(laneFree(r,nextRailLane,5.4))r.targetLateral=nextRailLane;
+            r.maneuver='final-hold';
+            r.laneLock=.75;
+          }
+          r.finalLaneChosen=true;
         }else{
-          r.targetLateral=r.lateral;
-          r.maneuver='hold';
-          r.laneLock=.45;
+          const nextRailLane=stepToward(r.lateral,railTarget,r.maneuver==='outside-pass'?2.25:1.95);
+          if(laneFree(r,nextRailLane,5.6)){
+            r.targetLateral=nextRailLane;
+            r.maneuver='rail';
+            r.laneLock=.78+Math.random()*.28;
+          }else{
+            r.targetLateral=r.lateral;
+            r.maneuver='hold';
+            r.laneLock=.45;
+          }
         }
       }
     }
@@ -432,9 +449,12 @@ function updateRaceAI(r,dt){
 }
 function placeRunner(r,gatePose=false){const fraction=THREE.MathUtils.clamp(r.distance/race.distance,0,1),p=route.getPointAtFraction(fraction),tan=route.getTangentAtFraction(fraction),side=new THREE.Vector3(-tan.z,0,tan.x).normalize();const target=p.clone().addScaledVector(side,r.lateral);if(gatePose)target.addScaledVector(tan,-1.25);target.y=.05;r.root.position.copy(target);r.root.rotation.y=Math.atan2(tan.x,tan.z);}
 
-async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$('loadOverlay').classList.add('hidden');startTime=performance.now();last=performance.now();raf=requestAnimationFrame(loop);}
+async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;racePaceLeader=null;lastRankRender=0;smoothCameraFocusReady=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;state.manualCamera=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finalLaneChosen:false,finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});
+const paceCandidates=runners.filter(x=>x.tactic==='front');
+racePaceLeader=(paceCandidates.length?paceCandidates[Math.floor(Math.random()*paceCandidates.length)]:runners[0])||null;
+createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$('loadOverlay').classList.add('hidden');startTime=performance.now();last=performance.now();raf=requestAnimationFrame(loop);}
 
-function targetSpeed(r){
+function targetSpeed(r,live,leader){
   const d=race.distance,h=r.horse,progress=r.distance/d,remaining=d-r.distance;
   const base=d<=1200?17.8:d<=1600?17.35:d<=2000?17.0:d<=2500?16.65:16.3;
   let factor=(1+(ability(h,d)-fieldAbility)*.00110)*(1+(distanceFit(h,d)-.98)*.38)*(1+r.form);
@@ -442,14 +462,28 @@ function targetSpeed(r){
   factor*=effortSpeed;
   factor*=.968+.032*r.energy;
 
-  const live=sorted();
-  const leader=live[0];
   const gapToLeader=Math.max(0,(leader?.distance||r.distance)-r.distance);
   const nearestAhead=live
     .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&Math.abs(o.lateral-r.lateral)<2.1)
     .sort((a,b)=>a.distance-b.distance)[0];
 
-  if(remaining>380){
+  const packPhase=remaining>(d<=1600?450:600);
+  if(packPhase&&racePaceLeader){
+    const orderIndex=Math.max(0,live.indexOf(r));
+    const detached=r.tactic==='closer'?3.6:0;
+    const desiredGap=r===racePaceLeader?0:Math.min(9.5,1.8+orderIndex*.72+detached);
+    const actualGap=Math.max(0,racePaceLeader.distance-r.distance);
+
+    if(r===racePaceLeader){
+      const second=live.find(o=>o!==r);
+      if(second&&r.distance-second.distance>4.8)factor*=.992;
+      else factor*=1.002;
+    }else{
+      if(actualGap>desiredGap+1.5)factor*=1+Math.min(.020,(actualGap-desiredGap)*.0018);
+      if(actualGap<Math.max(.4,desiredGap-1.2))factor*=.994;
+      if(r.distance>racePaceLeader.distance-.25)factor*=.990;
+    }
+  }else if(remaining>380){
     if(gapToLeader>7)factor*=1+Math.min(.017,(gapToLeader-7)*.00055);
     if(r===leader&&live[1]&&r.distance-live[1].distance>5)factor*=.994;
   }
@@ -479,13 +513,13 @@ function targetSpeed(r){
 }
 function captureFinishPhoto(){
   const oldPos=camera.position.clone(),oldQuat=camera.quaternion.clone(),oldFov=camera.fov;
-  // Foto finish clásica: perpendicular a la línea, centrada en la herradura/meta.
-  camera.position.set(FINISH_X+.35,3.9,BOTTOM_Z+48);
-  camera.fov=29;
+  // Foto finish lateral: los caballos cruzan delante de la herradura, que queda centrada al fondo.
+  camera.position.set(FINISH_X+.10,4.25,BOTTOM_Z+58);
+  camera.fov=26;
   camera.updateProjectionMatrix();
-  camera.lookAt(FINISH_X+.1,2.15,BOTTOM_Z-3.5);
+  camera.lookAt(FINISH_X+.10,2.65,RAIL_Z_INNER-.82);
   renderer.render(scene,camera);
-  snapshot=renderer.domElement.toDataURL('image/jpeg',.90);
+  snapshot=renderer.domElement.toDataURL('image/jpeg',.92);
   camera.position.copy(oldPos);
   camera.quaternion.copy(oldQuat);
   camera.fov=oldFov;
@@ -504,17 +538,18 @@ function loop(now){
   animateGates(dt);
   elapsed+=dt*state.raceSpeed;
   if(gateGroup&&elapsed>1.6)clearGates();
+  const liveFrame=sorted(),leaderFrame=liveFrame[0]||null;
   runners.forEach(r=>{
     if(r.finished)return;
-    updateRaceAI(r,dt);
-    const ts=targetSpeed(r),resp=1-Math.exp(-(2.6+r.horse.accel*.01)*dt*state.raceSpeed);
+    updateRaceAI(r,dt,liveFrame,leaderFrame);
+    const ts=targetSpeed(r,liveFrame,leaderFrame),resp=1-Math.exp(-(2.6+r.horse.accel*.01)*dt*state.raceSpeed);
     r.speed=THREE.MathUtils.lerp(r.speed,ts,resp);r.distance+=r.speed*dt*state.raceSpeed;
     if(r.distance>=race.distance){r.distance=race.distance;r.finished=true;r.time=elapsed;finishOrder.push(r);if(finishOrder.length===1){finishPhotoPending=true;$('finishFlash').classList.add('show');}}
     placeRunner(r);r.mixer.update(dt*state.raceSpeed*(.82+r.speed/20));
   });
   if(finishPhotoPending){captureFinishPhoto();finishPhotoPending=false;}
   if(finishOrder.length===runners.length){finished=true;setTimeout(results,700);}
-  updateCamera(dt);updateRank();renderer.render(scene,camera);if(!finished)raf=requestAnimationFrame(loop);
+  updateCamera(dt);if(now-lastRankRender>90){updateRank();lastRankRender=now;}renderer.render(scene,camera);if(!finished)raf=requestAnimationFrame(loop);
 }
 function sorted(){return [...runners].sort((a,b)=>b.distance-a.distance||(a.time??999)-(b.time??999));}
 function miniSilk(h){let bg;if(h.pattern==='stars')bg=`radial-gradient(circle at 30% 30%,${h.accent} 0 1.5px,transparent 2px),radial-gradient(circle at 70% 68%,${h.accent} 0 1.5px,transparent 2px),${h.silk}`;else if(h.pattern==='stripes')bg=`repeating-linear-gradient(90deg,${h.silk} 0 4px,${h.accent} 4px 8px)`;else if(h.pattern==='chestcross')bg=`linear-gradient(90deg,transparent 38%,${h.accent} 38% 62%,transparent 62%),linear-gradient(0deg,transparent 38%,${h.accent} 38% 62%,transparent 62%),${h.silk}`;else if(h.pattern==='solid')bg=h.silk;else bg=`linear-gradient(135deg,${h.silk} 0 44%,${h.accent} 45% 60%,${h.silk} 61%)`;return `<span style="width:18px;height:18px;min-width:18px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.65);background:${bg};box-shadow:0 0 0 1px rgba(0,0,0,.25)"></span>`;}
@@ -545,7 +580,18 @@ function frontCameraFocus(){
 }
 function updateCamera(dt){
   if(!runners.length)return;
-  const focus=frontCameraFocus(),lead=focus.lead,center=focus.center;
+  const focus=frontCameraFocus(),lead=focus.lead;
+  if(!smoothCameraFocusReady){smoothCameraFocus.copy(focus.center);smoothCameraFocusReady=true;}
+  else smoothCameraFocus.lerp(focus.center,1-Math.exp(-3.4*dt));
+  const center=smoothCameraFocus;
+
+  if(state.manualCamera){
+    const desired=center.clone().add(manualCameraOffset);
+    camera.position.lerp(desired,1-Math.exp(-4.0*dt));
+    const target=center.clone();target.y=1.8;
+    camera.lookAt(target);
+    return;
+  }
   const f=THREE.MathUtils.clamp(lead.distance/race.distance,0,1),tan=route.getTangentAtFraction(f);
   const rawSide=new THREE.Vector3(tan.z,0,-tan.x).normalize();
   const infieldCenter=new THREE.Vector3(-82,0,BOTTOM_Z-98);
@@ -614,8 +660,8 @@ function results(){
 $('confirmBtn').onclick=()=>{const field=horses.filter(h=>state.selected.has(h.id));if(field.length>=6)startRace(field,currentRace());};
 $('speedBtn').onclick=()=>{state.raceSpeed=state.raceSpeed===1?1.5:state.raceSpeed===1.5?2:1;$('speedBtn').textContent='x'+state.raceSpeed;};
 if($('startRaceBtn'))$('startRaceBtn').onclick=()=>{if(running||finished)return;running=true;elapsed=0;last=performance.now();openGates();$('startRaceBtn').classList.remove('show');$('startRaceBtn').disabled=true;if($('pauseBtn'))$('pauseBtn').disabled=false;$('commentary').textContent='¡Se abren los cajones! Comienza la carrera.';};
-$('cameraBtn').onclick=()=>{state.cameraMode=(state.cameraMode+1)%5;$('cameraBtn').textContent=['Cámara TV','Cámara aérea','Cámara rail','Cámara cercana','Cámara meta'][state.cameraMode];};
-if($('pauseBtn'))$('pauseBtn').onclick=()=>{if(!running||finished)return;state.paused=!state.paused;if(orbitControls){orbitControls.enabled=state.paused;if(state.paused){orbitControls.target.copy(packCenter()).setY(1.8);orbitControls.update();}}$('pauseBtn').textContent=state.paused?'Reanudar':'Pausa';$('commentary').textContent=state.paused?'Carrera en pausa · puedes mover la cámara con ratón o dedo.':'Carrera reanudada.';};
+$('cameraBtn').onclick=()=>{state.manualCamera=false;state.cameraMode=(state.cameraMode+1)%5;$('cameraBtn').textContent=['Cámara TV','Cámara aérea','Cámara rail','Cámara cercana','Cámara meta'][state.cameraMode];};
+if($('pauseBtn'))$('pauseBtn').onclick=()=>{if(!running||finished)return;if(!state.paused){state.paused=true;state.manualCamera=false;if(orbitControls){orbitControls.enabled=true;const f=frontCameraFocus();orbitControls.target.copy(f.center).setY(1.8);orbitControls.update();}$('pauseBtn').textContent='Reanudar';$('commentary').textContent='Carrera en pausa · coloca la cámara donde quieras.';}else{const f=frontCameraFocus();manualCameraOffset.copy(camera.position).sub(f.center);state.paused=false;state.manualCamera=true;if(orbitControls)orbitControls.enabled=false;$('pauseBtn').textContent='Pausa';$('commentary').textContent='Cámara libre siguiendo el pelotón · pulsa Cámara para volver a una vista TV.';}};
 $('exitRaceBtn').onclick=()=>{cancelAnimationFrame(raf);show('mainMenu');};
 $('menuFromResults').onclick=()=>show('mainMenu');
 $('repeatBtn').onclick=()=>startRace(state.lastField,currentRace());
