@@ -235,8 +235,8 @@ const TRACK_CONDITION = {
 };
 
 const TERRAIN_PROFILE = {
-  safaga:{hard:1.010,normal:1.004,heavy:.994},
-  estraunza:{hard:1.000,normal:1.004,heavy:1.008},
+  safaga:{hard:.993,normal:1.004,heavy:1.012},
+  estraunza:{hard:1.008,normal:1.005,heavy:.997},
   sirjan:{hard:.997,normal:1.004,heavy:1.012},
   fortun:{hard:.995,normal:1.003,heavy:1.012},
   entrecopas:{hard:.992,normal:1.002,heavy:1.016},
@@ -781,7 +781,8 @@ function interiorSignFor(r){
   return plus.distanceToSquared(infield)<minus.distanceToSquared(infield)?1:-1;
 }
 function railTargetFor(r){
-  return interiorSignFor(r)*(TRACK_WIDTH/2-3.0);
+  // Centro del caballo a ~1,6 m del borde interior: visualmente corre realmente "por los palos".
+  return interiorSignFor(r)*(TRACK_WIDTH/2-1.6);
 }
 function turnIntensityFor(r){
   const f=THREE.MathUtils.clamp(r.distance/race.distance,0,1);
@@ -793,10 +794,10 @@ function turnIntensityFor(r){
 function railEfficiencyFor(r){
   const rail=railTargetFor(r);
   const metresFromRail=Math.abs(r.lateral-rail);
-  const wide=THREE.MathUtils.clamp((metresFromRail-1.0)/11.0,0,1);
+  const wide=THREE.MathUtils.clamp((metresFromRail-.45)/10.0,0,1);
   const turn=turnIntensityFor(r);
-  // En curva el exterior recorre claramente más: el castigo llega a ~4.5% en la calle más abierta.
-  return 1-wide*(.0045+.0405*turn);
+  // Ir abierto cuesta metros de verdad: hasta ~6% en la parte exterior de una curva fuerte.
+  return 1-wide*(.005+.055*turn);
 }
 function stepToward(value,target,step){
   if(Math.abs(target-value)<=step)return target;
@@ -835,7 +836,7 @@ function updateRaceAI(r,dt,live,leader){
   if(!inFinal){
     // Durante curvas y recorrido: pelotón compacto junto a la cuerda.
     // Los slots están medidos desde el rail hacia el exterior.
-    const railSlots=[.75,2.15,3.55,4.95];
+    const railSlots=[.35,2.55,4.75,6.95];
     const row=r.packRow||0;
     const col=r.packCol||0;
     const slotIndex=row===0?0:row===1?Math.min(1,col):Math.min(2,col);
@@ -855,7 +856,7 @@ function updateRaceAI(r,dt,live,leader){
         const wide=metresFromRail>5.25;
 
         // Al salir de cajones cerramos más deprisa; después el movimiento es más fino.
-        const mergeStep=r.distance<70?2.05:(turn>.12?1.85:1.55);
+        const mergeStep=r.distance<120?2.45:(turn>.12?2.05:1.80);
         const desiredLane=stepToward(r.lateral,preferredLane,mergeStep);
 
         const blockerAhead=live
@@ -927,13 +928,13 @@ function updateRaceAI(r,dt,live,leader){
   }
 
   // Cierre más decidido hacia cuerda; apertura final más rápida para que se vean los ataques.
-  const lateralRate=inFinal?3.10:(turn>.10?2.35:1.85);
+  const lateralRate=inFinal?3.25:(turn>.10?2.70:2.30);
   const laneBlend=1-Math.exp(-lateralRate*scaledDt);
   const proposedLateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
   const lateralConflict=runners.some(o=>
     o!==r&&!o.finished&&
-    Math.abs(o.distance-r.distance)<4.35&&
-    Math.abs(o.lateral-proposedLateral)<1.95
+    Math.abs(o.distance-r.distance)<2.35&&
+    Math.abs(o.lateral-proposedLateral)<1.35
   );
   if(!lateralConflict)r.lateral=proposedLateral;
 
@@ -971,6 +972,9 @@ function targetSpeed(r,live,leader){
   const base=(d<=1200?17.8:d<=1600?17.35:d<=2000?17.0:d<=2500?16.65:16.3)*condition.pace;
   const adjustedAbility=ability(h,d)*distanceFit(h,d)*terrainFit(h,race.condition);
   let factor=(1+(adjustedAbility-fieldAbility)*.00078)*(1+r.form+r.rivalry);
+  // El perfil de terreno modifica directamente el rendimiento del caballo.
+  // Así un heavy/hard puede cambiar el orden, no solo hacer la carrera globalmente más lenta/rápida.
+  factor*=Math.pow(terrainFit(h,race.condition),.90);
   const effortSpeed=.79+r.effort*.21;
   factor*=effortSpeed;
   factor*=.968+.032*r.energy;
@@ -1072,11 +1076,15 @@ function loop(now){
     r.speed=THREE.MathUtils.lerp(r.speed,ts,resp);
     const previousDistance=r.distance;
     const proposedDistance=previousDistance+r.speed*dt*state.raceSpeed;
+    // Solo hay bloqueo si otro caballo está CLARAMENTE delante y prácticamente en la misma calle.
+    // Los caballos que salen en paralelo desde cajones ya no se frenan entre sí.
     const closeAhead=runners
-      .filter(o=>o!==r&&!o.finished&&o.distance>previousDistance&&Math.abs(o.lateral-r.lateral)<2.20)
-      .sort((a,b)=>a.distance-b.distance)[0];
+      .map(o=>({o,gap:o.distance-previousDistance}))
+      .filter(x=>x.o!==r&&!x.o.finished&&x.gap>.85&&x.gap<4.6&&Math.abs(x.o.lateral-r.lateral)<1.35)
+      .sort((a,b)=>a.gap-b.gap)[0]?.o;
     if(closeAhead){
-      const maxAllowed=Math.max(previousDistance,closeAhead.distance-4.05);
+      const safeGap=2.35;
+      const maxAllowed=Math.max(previousDistance,closeAhead.distance-safeGap);
       r.distance=Math.min(proposedDistance,maxAllowed);
     }else{
       r.distance=proposedDistance;
@@ -1091,9 +1099,10 @@ function loop(now){
     const front=safetyOrder[i];
     for(let j=i+1;j<safetyOrder.length;j++){
       const back=safetyOrder[j];
-      if(Math.abs(front.lateral-back.lateral)<2.20&&front.distance-back.distance<4.05){
-        back.distance=Math.max(0,front.distance-4.05);
-        back.speed=Math.min(back.speed,front.speed*.985);
+      const gap=front.distance-back.distance;
+      if(Math.abs(front.lateral-back.lateral)<1.30&&gap>.70&&gap<2.35){
+        back.distance=Math.max(0,front.distance-2.35);
+        back.speed=Math.min(back.speed,front.speed*.992);
       }
     }
   }
