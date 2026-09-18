@@ -242,30 +242,7 @@ function addRaceNumberToSaddle(root,model,h){
   }
 }
 function addHorseMarkings(root,h,box,size){
-  const markings=h.markings||{face:'none',socks:[]};
-  if(!markings.socks||!markings.socks.length)return;
-  const coatMat=new THREE.MeshLambertMaterial({color:h.coat});
-  const center=new THREE.Vector3();box.getCenter(center);
-  const sockMap={
-    LF:[ size.x*.18,box.max.z-size.z*.27],
-    RF:[-size.x*.18,box.max.z-size.z*.27],
-    LR:[ size.x*.18,box.min.z+size.z*.24],
-    RR:[-size.x*.18,box.min.z+size.z*.24]
-  };
-  (markings.socks||[]).forEach(key=>{
-    const p=sockMap[key];if(!p)return;
-    const sock=new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        Math.max(.035,size.x*.035),
-        Math.max(.038,size.x*.040),
-        Math.max(.16,size.y*.16),
-        8
-      ),
-      coatMat.clone()
-    );
-    sock.position.set(p[0],box.min.y+Math.max(.09,size.y*.085),p[1]);
-    root.add(sock);
-  });
+  // Desactivado: las marcas añadidas como geometría podían quedar flotando al animarse.
 }
 function makeRunner(h){
   const root=new THREE.Group(),model=SkeletonUtils.clone(horseTemplate),jockeySilkTexture=silkTexture(h);
@@ -278,7 +255,10 @@ function makeRunner(h){
     for(const mat of mats){
       const name=(mat?.name||'').toLowerCase();
       const horseLeg=/leg|limb|fetlock|pastern|cannon|sock/.test(name+' '+objectName);
-      if(name==='horse_hooves'||horseLeg||name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x050505);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.95;mat.metalness=0;mat.needsUpdate=true;}
+      if(name.includes('horse_teeth')){setMaterialColor(mat,0x5a493b);mat.map=null;mat.needsUpdate=true;}
+      else if(name.includes('horse_gums')){setMaterialColor(mat,0x4a2727);mat.map=null;mat.needsUpdate=true;}
+      else if(name.includes('horse_cornea')){mat.transparent=true;mat.opacity=.16;mat.depthWrite=false;mat.needsUpdate=true;}
+      else if(name==='horse_hooves'||horseLeg||name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x050505);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.95;mat.metalness=0;mat.needsUpdate=true;}
       else if(name.includes('horse.body.pattern')){setMaterialColor(mat,h.coat);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.9;mat.metalness=0;mat.needsUpdate=true;}
       else if(name.includes('jockey_silk_main')||name.includes('jockey_silk_primary')){mat.map=jockeySilkTexture;setMaterialColor(mat,0xffffff);mat.needsUpdate=true;}
       else if(name.includes('jockey_silk_secondary'))setMaterialColor(mat,h.id==='safaga'?h.silk:h.accent);
@@ -345,10 +325,10 @@ function effortFor(r){
   if(r.tactic==='stalker'&&remaining<650)effort+=.018;
   return THREE.MathUtils.clamp(effort,.60,1);
 }
-function laneFree(r,lane,longitudinalWindow=6.2){
+function laneFree(r,lane,longitudinalWindow=7.5){
   const limit=TRACK_WIDTH/2-2.0;
   if(Math.abs(lane)>limit)return false;
-  return !runners.some(o=>o!==r&&!o.finished&&Math.abs(o.distance-r.distance)<longitudinalWindow&&Math.abs(o.lateral-lane)<1.28);
+  return !runners.some(o=>o!==r&&!o.finished&&Math.abs(o.distance-r.distance)<longitudinalWindow&&Math.abs(o.lateral-lane)<1.70);
 }
 function interiorSignFor(r){
   const f=THREE.MathUtils.clamp(r.distance/race.distance,0,1);
@@ -387,93 +367,47 @@ function updateRaceAI(r,dt,live,leader){
   const remaining=race.distance-r.distance;
   const insideSign=interiorSignFor(r);
   const outsideSign=-insideSign;
-  const railTarget=railTargetFor(r);
 
   if(r.nextDecision<=0){
-    const gapToLeader=Math.max(0,(leader?.distance||r.distance)-r.distance);
-    const metresFromRail=Math.abs(r.lateral-railTarget);
     const blockers=runners
-      .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&o.distance-r.distance<10.5&&Math.abs(o.lateral-r.lateral)<1.65)
+      .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&o.distance-r.distance<9.0&&Math.abs(o.lateral-r.lateral)<1.75)
       .sort((a,b)=>a.distance-b.distance);
     r.blocked=blockers.length>0;
 
-    if(r.laneLock<=0){
-      const urgentRailReturn=metresFromRail>4.2&&gapToLeader>4.0&&remaining>180;
-      if(urgentRailReturn){
-        const inwardLane=stepToward(r.lateral,railTarget,2.25);
-        const deeperInward=stepToward(r.lateral,railTarget,3.35);
-        if(laneFree(r,inwardLane,7.0)){
-          r.targetLateral=inwardLane;
-          r.maneuver='recover-rail';
-          r.laneLock=.85+Math.random()*.25;
-        }else if(laneFree(r,deeperInward,7.4)){
-          r.targetLateral=deeperInward;
-          r.maneuver='recover-rail';
-          r.laneLock=.95+Math.random()*.25;
-        }else if(r.blocked){
-          r.targetLateral=r.lateral;
-          r.maneuver='wait-inside-gap';
-          r.laneLock=.45;
-        }else{
-          r.targetLateral=r.lateral;
-          r.maneuver='hold';
-          r.laneLock=.40;
-        }
-      }else if(r.blocked){
-        const outLane=r.lateral+outsideSign*2.05;
-        const inLane=r.lateral+insideSign*1.90;
-        const hasInnerRoom=Math.abs(inLane)<=TRACK_WIDTH/2-2.2;
+    const settled=Math.abs(r.targetLateral-r.lateral)<.28;
+    if(r.laneLock<=0&&settled){
+      if(r.blocked){
+        const outLane=r.lateral+outsideSign*2.45;
+        const inLane=r.lateral+insideSign*2.35;
+        const outFree=laneFree(r,outLane,8.2);
+        const inFree=laneFree(r,inLane,8.2);
 
-        if(laneFree(r,outLane,7.2)){
+        if(outFree){
           r.targetLateral=outLane;
           r.maneuver='outside-pass';
-          r.laneLock=1.15+Math.random()*.45;
-        }else if(hasInnerRoom&&laneFree(r,inLane,7.2)){
+          r.laneLock=3.0+Math.random()*.8;
+        }else if(inFree){
           r.targetLateral=inLane;
           r.maneuver='inside-pass';
-          r.laneLock=1.10+Math.random()*.40;
+          r.laneLock=3.0+Math.random()*.8;
         }else{
           r.targetLateral=r.lateral;
           r.maneuver='boxed';
-          r.laneLock=.55;
+          r.laneLock=1.0+Math.random()*.35;
         }
       }else{
-        const finalZone=remaining<(race.distance<=1600?450:600);
-
-        if(finalZone&&!r.finalLaneChosen){
-          const outLane=r.lateral+outsideSign*2.0;
-          const wantsOutside=r.tactic==='closer'||(r.tactic==='stalker'&&r.horse.accel>=94);
-          if(wantsOutside&&laneFree(r,outLane,6.5)){
-            r.targetLateral=outLane;
-            r.maneuver='final-outside';
-            r.laneLock=1.05+Math.random()*.30;
-          }else{
-            const nextRailLane=stepToward(r.lateral,railTarget,1.9);
-            if(laneFree(r,nextRailLane,5.4))r.targetLateral=nextRailLane;
-            r.maneuver='final-hold';
-            r.laneLock=.75;
-          }
-          r.finalLaneChosen=true;
-        }else{
-          const nextRailLane=stepToward(r.lateral,railTarget,r.maneuver==='outside-pass'?2.25:1.95);
-          if(laneFree(r,nextRailLane,5.6)){
-            r.targetLateral=nextRailLane;
-            r.maneuver='rail';
-            r.laneLock=.78+Math.random()*.28;
-          }else{
-            r.targetLateral=r.lateral;
-            r.maneuver='hold';
-            r.laneLock=.45;
-          }
-        }
+        // Si no hay tráfico, mantiene su línea. Evita fuera-dentro-fuera continuo.
+        r.targetLateral=r.lateral;
+        r.maneuver='hold-line';
+        r.laneLock=1.1+Math.random()*.45;
       }
     }
 
-    r.nextDecision=.28+Math.random()*.22;
+    r.nextDecision=.70+Math.random()*.45;
   }
 
-  // Movimiento lateral suave: evita el entrar/salir brusco que se veía antes.
-  const laneBlend=1-Math.exp(-1.65*scaledDt);
+  // Cambio de calle más progresivo y, sobre todo, sin invertir la maniobra a mitad.
+  const laneBlend=1-Math.exp(-.92*scaledDt);
   r.lateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
 
   r.effort=effortFor(r);
@@ -497,7 +431,7 @@ function targetSpeed(r,live,leader){
 
   const gapToLeader=Math.max(0,(leader?.distance||r.distance)-r.distance);
   const nearestAhead=live
-    .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&Math.abs(o.lateral-r.lateral)<2.1)
+    .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&Math.abs(o.lateral-r.lateral)<1.80)
     .sort((a,b)=>a.distance-b.distance)[0];
 
   const packPhase=remaining>(d<=1600?450:600);
@@ -527,8 +461,10 @@ function targetSpeed(r,live,leader){
       factor*=1.006;
       r.energy=Math.min(1,r.energy+.0005);
     }
-    if(draftGap<3.8&&Math.abs(nearestAhead.lateral-r.lateral)<1.45){
-      factor*=.985;
+    if(draftGap<2.2&&Math.abs(nearestAhead.lateral-r.lateral)<1.70){
+      factor*=.925;
+    }else if(draftGap<4.0&&Math.abs(nearestAhead.lateral-r.lateral)<1.70){
+      factor*=.970;
     }
   }
 
@@ -547,8 +483,8 @@ function targetSpeed(r,live,leader){
 function captureFinishPhoto(){
   const oldPos=camera.position.clone(),oldQuat=camera.quaternion.clone(),oldFov=camera.fov;
   // Foto finish lateral: los caballos cruzan delante de la herradura, que queda centrada al fondo.
-  camera.position.set(FINISH_X+.10,4.25,BOTTOM_Z+44);
-  camera.fov=26;
+  camera.position.set(FINISH_X+.10,4.25,BOTTOM_Z+32);
+  camera.fov=24;
   camera.updateProjectionMatrix();
   camera.lookAt(FINISH_X+.10,2.65,RAIL_Z_INNER-.82);
   renderer.render(scene,camera);
@@ -578,7 +514,18 @@ function loop(now){
     if(r.finished)return;
     updateRaceAI(r,dt,liveFrame,leaderFrame);
     const ts=targetSpeed(r,liveFrame,leaderFrame),resp=1-Math.exp(-(2.6+r.horse.accel*.01)*dt*state.raceSpeed);
-    r.speed=THREE.MathUtils.lerp(r.speed,ts,resp);r.distance+=r.speed*dt*state.raceSpeed;
+    r.speed=THREE.MathUtils.lerp(r.speed,ts,resp);
+    const previousDistance=r.distance;
+    const proposedDistance=previousDistance+r.speed*dt*state.raceSpeed;
+    const closeAhead=runners
+      .filter(o=>o!==r&&!o.finished&&o.distance>previousDistance&&Math.abs(o.lateral-r.lateral)<1.45)
+      .sort((a,b)=>a.distance-b.distance)[0];
+    if(closeAhead){
+      const maxAllowed=Math.max(previousDistance,closeAhead.distance-1.15);
+      r.distance=Math.min(proposedDistance,maxAllowed);
+    }else{
+      r.distance=proposedDistance;
+    }
     if(r.distance>=race.distance){r.distance=race.distance;r.finished=true;r.time=elapsed;finishOrder.push(r);if(finishOrder.length===1){finishPhotoPending=true;$('finishFlash').classList.add('show');}}
     placeRunner(r);r.mixer.update(dt*state.raceSpeed*(.82+r.speed/20));
   });
