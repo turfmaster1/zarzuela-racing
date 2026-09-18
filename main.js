@@ -79,6 +79,12 @@ const REAL_JCE = {
     palmares:['GP Ruban 2024'],
     note:'Máximo histórico indicado: 45.'
   },
+  greatprospector:{
+    peakValue:46.5,
+    peakSource:'JCE',
+    palmares:['Gran Premio Antonio Blasco 2020','Andrés Covarrubias 2020'],
+    note:'JCE lo valoró en 46,5 en 2022; uno de los mejores velocistas/milers de su generación.'
+  },
   elsokhna:{
     peakValue:41,
     peakSource:'JCE',
