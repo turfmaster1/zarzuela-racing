@@ -22,32 +22,32 @@ const JOCKEYS = [
 ];
 
 const horses = [
-  ['safaga','Safaga','Asoc. La Toledana–Becares','G. Trolley de Prévaux','intermediate',94,95,96,1800,2400,0x17100e,'#08090a','#20c9c3','chestcross',{face:'none',socks:[]},'Castaño muy oscuro'],
+  ['safaga','Safaga','Asoc. La Toledana–Becares','G. Trolley de Prévaux','intermediate',95,95,96,1800,2400,0x17100e,'#08090a','#20c9c3','chestcross',{face:'none',socks:[]},'Castaño muy oscuro'],
   ['estraunza','Estraunza','Becares','A. Gutiérrez V.','stayer',94,98,94,2400,2800,0x2b1a15,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Castaño oscuro'],
-  ['sirjan','Sirjan','Cum Laude Racing','J. Gelabert','stayer',95,99,94,2200,3000,0x733b24,'#1746b8','#f05a18','stripes',{face:'none',socks:[]},'Castaño rojizo'],
-  ['elsokhna','El Sokhna','Becares','A. Gutiérrez V.','miler',94,86,94,1200,1600,0x8e4a2c,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Alazán'],
-  ['presidency','Presidency','Presidency','V. Janáček','sprinter',97,80,97,1000,1400,0x4b2d23,'#d71920','#ffffff','band',{face:'none',socks:[]},'Castaño'],
+  ['sirjan','Sirjan','Cum Laude Racing','J. Gelabert','stayer',96,100,95,2200,3000,0x733b24,'#1746b8','#f05a18','stripes',{face:'none',socks:[]},'Castaño rojizo'],
+  ['elsokhna','El Sokhna','Becares','A. Gutiérrez V.','miler',93,84,93,1200,1600,0x8e4a2c,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Alazán'],
+  ['presidency','Presidency','Presidency','V. Janáček','sprinter',99,81,99,1000,1400,0x4b2d23,'#d71920','#ffffff','band',{face:'none',socks:[]},'Castaño'],
   ['viciousharry','Vicious Harry','Vicious Harry','R. Sousa','sprinter',99,81,99,1000,1400,0x4a2d22,'#f5f5f5','#2458b8','stripes',{face:'none',socks:[]},'Castaño'],
-  ['greatprospector','Great Prospector','Mallow Gran Canaria','B. Fayos','sprinter',99,80,98,1000,1400,0x3c261f,'#17305f','#f5f5f5','band',{face:'none',socks:[]},'Castaño'],
-  ['rodaballo','Rodaballo','Pata Negra Racing','J. L. Martínez','miler',98,87,98,1200,1600,0x34221d,'#08796d','#54c97b','quarters',{face:'none',socks:[]},'Castaño'],
-  ['fortun','Fortun','La Toledana','B. Fayos','intermediate',96,96,94,1800,2450,0x100d0c,'#090a0b','#090a0b','solid',{face:'none',socks:[]},'Negro / castaño muy oscuro'],
+  ['greatprospector','Great Prospector','Mallow Gran Canaria','B. Fayos','sprinter',100,82,99,1000,1400,0x3c261f,'#17305f','#f5f5f5','band',{face:'none',socks:[]},'Castaño'],
+  ['rodaballo','Rodaballo','Pata Negra Racing','J. L. Martínez','miler',99,88,99,1200,1600,0x34221d,'#08796d','#54c97b','quarters',{face:'none',socks:[]},'Castaño'],
+  ['fortun','Fortun','La Toledana','B. Fayos','intermediate',93,94,92,1800,2450,0x100d0c,'#090a0b','#090a0b','solid',{face:'none',socks:[]},'Negro / castaño muy oscuro'],
   ['entrecopas','Entre Copas','Cuadra África','J. L. Martínez','stayer',90,100,87,2400,4000,0x8a4b2c,'#aa2431','#f2d66a','band',{face:'none',socks:[]},'Alazán'],
-  ['amedeo','Amedeo Modigliani','Yeguada Rocío','V. Janáček','miler',98,86,97,1450,1800,0x3a241e,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño oscuro'],
+  ['amedeo','Amedeo Modigliani','Yeguada Rocío','V. Janáček','miler',98,87,98,1450,1800,0x3a241e,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño oscuro'],
   ['frine','Friné','Duque de Alburquerque','J. Grosjean','stayer',95,99,95,2200,2800,0x8d8b86,'#ededeb','#722338','band',{face:'none',socks:[]},'Tordo'],
   ['espoir','Espoir Avenir (FR)','Alain Maubert','E. Corallo','stayer',96,100,94,2300,3100,0xaaa9a4,'#235a9d','#d53838','diagonal',{face:'none',socks:[]},'Tordo'],
   ['warofdance','War of Dance','Peques','R. N. Valle','stayer',95,98,94,2000,2500,0x4a2c22,'#f07b26','#12a4a4','quarters',{face:'none',socks:[]},'Castaño'],
-  ['coetzee','Coetzee','Alex y Sofía','R. N. Valle','stayer',96,99,94,2400,3000,0x884526,'#203d87','#eadc61','band',{face:'none',socks:[]},'Alazán'],
+  ['coetzee','Coetzee','Alex y Sofía','R. N. Valle','stayer',97,100,95,2400,3200,0x884526,'#203d87','#eadc61','band',{face:'none',socks:[]},'Alazán'],
   ['kildare','Kildare Legend','Salvador Márquez','R. Sousa','stayer',95,97,94,1800,2600,0xa45a31,'#f5f5f5','#d71920','band',{face:'none',socks:[]},'Alazán'],
-  ['naranco','Naranco','Yeguada Rocío','V. Janáček','stayer',92,96,91,2200,2650,0x30201b,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño oscuro'],
-  ['tetuan','Tetuan','Yeguada Rocío','V. Janáček','stayer',92,97,91,2200,2850,0x402921,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
-  ['shackleton','Shackleton','Yeguada Rocío','I. Melgarejo','stayer',93,97,92,2300,3000,0x3d2a22,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
-  ['pamplona','Pamplona','Yeguada Rocío','V. Janáček','stayer',92,96,91,2200,2850,0x9a512e,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Alazán'],
-  ['ifnotnow','If Not Now','Yeguada Rocío','V. Janáček','intermediate',94,93,94,1850,2350,0x94502f,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Alazán'],
+  ['naranco','Naranco','Yeguada Rocío','V. Janáček','stayer',99,100,97,2000,2650,0x30201b,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño oscuro'],
+  ['tetuan','Tetuan','Yeguada Rocío','V. Janáček','stayer',94,98,93,2200,2850,0x402921,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
+  ['shackleton','Shackleton','Yeguada Rocío','I. Melgarejo','stayer',94,98,93,2300,3000,0x3d2a22,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
+  ['pamplona','Pamplona','Yeguada Rocío','V. Janáček','stayer',96,100,95,2200,3000,0x9a512e,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Alazán'],
+  ['ifnotnow','If Not Now','Yeguada Rocío','V. Janáček','intermediate',94,94,94,1850,2350,0x94502f,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Alazán'],
   ['thegame','The Game','Cielo de Madrid','R. Sousa','stayer',94,96,93,2150,2650,0x422920,'#72c9d7','#11181a','quarters',{face:'none',socks:[]},'Castaño'],
-  ['mediastorm','Media Storm','Best Horse','B. Fayos','stayer',93,97,91,2300,2750,0x70402a,'#17307e','#ffffff','band',{face:'none',socks:[]},'Alazán'],
-  ['elcaney','El Caney','Santa Bárbara','A. Gutiérrez V.','stayer',92,97,91,2250,2850,0x33231e,'#f2d64e','#168154','diagonal',{face:'none',socks:[]},'Castaño oscuro'],
-  ['kingjungle','King of Jungle','Diaz Sarmiento','R. N. Valle','miler',98,84,98,1200,1600,0x4b3026,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
-  ['samedi','Samedi Rien','Yeguada Rocío','V. Janáček','miler',98,84,97,1200,1600,0x5b3427,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño']
+  ['mediastorm','Media Storm','Best Horse','B. Fayos','stayer',96,99,94,2200,2850,0x70402a,'#17307e','#ffffff','band',{face:'none',socks:[]},'Alazán'],
+  ['elcaney','El Caney','Santa Bárbara','A. Gutiérrez V.','stayer',95,99,94,2200,3000,0x33231e,'#f2d64e','#168154','diagonal',{face:'none',socks:[]},'Castaño oscuro'],
+  ['kingjungle','King of Jungle','Diaz Sarmiento','R. N. Valle','miler',99,86,99,1100,1600,0x4b3026,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
+  ['samedi','Samedi Rien','Yeguada Rocío','V. Janáček','miler',100,87,99,1200,1600,0x5b3427,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño']
 ].map((x,i)=>({
   id:x[0],name:x[1],stable:x[2],preferredJockey:x[3],specialty:x[4],
   speed:x[5],stamina:x[6],accel:x[7],best:[x[8],x[9]],coat:x[10],
@@ -71,7 +71,20 @@ const REAL_JCE = {
   sirjan:{
     peakValue:46,
     peakSource:'JCE',
-    palmares:['Memorial Duque de Toledo 2024','Prix Max Sicard 2024','2º GP de Madrid 2026','2º Copa de Oro 2026']
+    palmares:['Memorial Duque de Toledo 2024','Prix Max Sicard 2024','2º GP de Madrid 2026','2º Copa de Oro 2026'],
+    note:'Máximo JCE verificado: 46.'
+  },
+  elsokhna:{
+    peakValue:41,
+    peakSource:'JCE',
+    palmares:['Turismo Gobierno Vasco 2022 · valor 41','Irizar 2022 · valor 41'],
+    note:'Máximo JCE localizado: 41.'
+  },
+  presidency:{
+    peakValue:45.5,
+    peakSource:'JCE',
+    palmares:['Gran Premio Ruban 2018 · valor 45,5'],
+    note:'Máximo JCE localizado: 45,5.'
   },
   viciousharry:{
     peakValue:45,
@@ -83,23 +96,66 @@ const REAL_JCE = {
     peakValue:46.5,
     peakSource:'JCE',
     palmares:['Gran Premio Antonio Blasco 2020','Andrés Covarrubias 2020'],
-    note:'JCE lo valoró en 46,5 en 2022; uno de los mejores velocistas/milers de su generación.'
+    note:'Máximo JCE localizado: 46,5.'
   },
-  elsokhna:{
+  rodaballo:{
+    peakValue:45.5,
+    peakSource:'JCE',
+    palmares:['Gran Premio Claudio Carudel 2024 · valor 45,5'],
+    note:'Máximo JCE localizado: 45,5.'
+  },
+  fortun:{
     peakValue:41,
     peakSource:'JCE',
-    palmares:['Actuaciones destacadas entre 1.200 y 1.600 m'],
-    note:'JCE registra actuaciones con valor 41.'
+    peakLabel:'Valor JCE verificado',
+    palmares:['Listado oficial JCE · 31/12/2015 · valor 41','GP X Aniversario Reapertura de La Zarzuela 2015'],
+    note:'El archivo oficial JCE confirma 41 a 31/12/2015. No se etiqueta como máximo de toda su carrera sin un listado histórico anterior que lo confirme.'
+  },
+  entrecopas:{
+    peakValue:null,
+    estimated:false,
+    palmares:['Caballo homenajeado por el JCE en la prueba Entre Copas (2011–2013) · Gladiateur'],
+    note:'Máximo histórico no localizado de forma fiable en el archivo digital del JCE; se mantiene sin cifra antes que inventarla.'
+  },
+  amedeo:{
+    peakValue:45,
+    peakSource:'JCE',
+    palmares:['Valor JCE 45 en 2020','Gran Premio Claudio Carudel 2022'],
+    note:'Máximo JCE localizado: 45.'
+  },
+  frine:{
+    peakValue:null,
+    estimated:false,
+    palmares:['Caballo homenajeado por el JCE en el Premio Friné (2014)'],
+    note:'Máximo histórico no localizado de forma fiable en el archivo digital del JCE; se mantiene sin cifra antes que inventarla.'
+  },
+  espoir:{
+    peakValue:null,
+    estimated:false,
+    palmares:['Copa de Oro de San Sebastián'],
+    note:'Máximo histórico no localizado de forma fiable en el archivo digital del JCE; se mantiene sin cifra antes que inventarla.'
   },
   warofdance:{
     peakValue:45,
     peakSource:'JCE',
     palmares:['GP de Madrid 2024','GP de Madrid 2025','Memorial Duque de Toledo 2023','Teresa 2024']
   },
+  coetzee:{
+    peakValue:null,
+    estimated:false,
+    palmares:['GP de Madrid 2026','Victoria 2.500 m Saint-Cloud 2026','5º Prix du Cadran G1 2025','3º Prix Gladiateur G3 2025'],
+    note:'El JCE recoge su historial internacional y el GP de Madrid, pero esas actuaciones aparecen sin valor JCE numérico.'
+  },
   kildare:{
     peakValue:45,
     peakSource:'JCE',
     palmares:['Bannaby 2026','3º GP de Madrid 2026']
+  },
+  naranco:{
+    peakValue:50,
+    peakSource:'JCE',
+    palmares:['Copa de Oro 2023 · valor JCE 50','GP Román Martín 2024'],
+    note:'Máximo JCE localizado: 50.'
   },
   tetuan:{
     peakValue:44,
@@ -122,22 +178,35 @@ const REAL_JCE = {
     peakSource:'JCE',
     palmares:['Victoria 2.400 m La Zarzuela 2025','2º GP de San Sebastián 2026']
   },
+  thegame:{
+    peakValue:43.5,
+    peakSource:'JCE',
+    palmares:['Copa de Oro 2023 · valor 43,5','3º Entre Copas · Gladiateur 2022'],
+    note:'Máximo JCE localizado: 43,5.'
+  },
+  mediastorm:{
+    peakValue:45.5,
+    peakSource:'JCE',
+    palmares:['Copa de Oro 2024 · valor 45,5'],
+    note:'Máximo JCE localizado: 45,5.'
+  },
+  elcaney:{
+    peakValue:45.5,
+    peakSource:'JCE',
+    palmares:['Copa de Oro 2023 · valor 45,5','Ganador Entre Copas · Gladiateur 2022'],
+    note:'Máximo JCE localizado: 45,5.'
+  },
+  kingjungle:{
+    peakValue:45.5,
+    peakSource:'JCE',
+    palmares:['GP Ruban 2023','GP Urquijo 2023','GP Andalucía 2024 · valor 45,5'],
+    note:'Máximo JCE localizado: 45,5.'
+  },
   samedi:{
     peakValue:46,
     peakSource:'JCE',
     palmares:['GP de la Hispanidad ×3','Gran Premio Gobierno Vasco'],
-    note:'Máximo histórico: 46.'
-  },
-  coetzee:{
-    peakValue:null,
-    estimated:false,
-    palmares:['GP de Madrid 2026','Victoria 2.500 m Saint-Cloud 2026','Victoria 3.100 m Longchamp 2025']
-  },
-  fortun:{
-    peakValue:null,
-    estimated:true,
-    palmares:[],
-    note:'Pendiente de estimar su máximo a partir de sus mejores carreras y rivales.'
+    note:'Máximo histórico/JCE indicado: 46.'
   }
 };
 
@@ -238,7 +307,7 @@ function renderStatsScreen(){
       ? String(real.peakValue).replace('.',',')
       : (real?.estimated?'Pendiente':'—');
     const peakLabel=real?.peakValue!=null
-      ? (real.peakSource==='JCE'?'Máximo JCE':'Máximo histórico')
+      ? (real.peakLabel||(real.peakSource==='JCE'?'Máximo JCE':'Máximo histórico'))
       : (real?.estimated?'Máximo estimado':'Valor máximo');
     const realPalmares=real?.palmares?.length
       ? `<div class="real-palmares">${real.palmares.map(x=>`<span>★ ${x}</span>`).join('')}</div>`
