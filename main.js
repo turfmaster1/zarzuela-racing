@@ -793,8 +793,8 @@ function effortFor(r){
   // Tras una salida igualada, cada estrategia empieza a dibujar la carrera.
   if(elapsed>=2.30){
     if(r.tactic==='front'){
-      if(remaining>700)effort+=.055;
-      else if(remaining>350)effort+=.020;
+      if(remaining>700)effort+=.040;
+      else if(remaining>350)effort+=.016;
     }else if(r.tactic==='closer'){
       if(remaining>900)effort-=.055;
       else if(remaining>650)effort-=.025;
@@ -995,8 +995,21 @@ function updateRaceAI(r,dt,live,leader){
   if(!lateralConflict)r.lateral=proposedLateral;
 
   r.effort=effortFor(r);
-  if(r.effort>.78)r.energy=Math.max(.82,r.energy-scaledDt*(r.effort-.78)*.0034);
-  else r.energy=Math.min(1,r.energy+scaledDt*.0007);
+
+  // Reserva real: correr fuerte pronto se paga, incluso con mucha stamina.
+  const inLaunch=elapsed<2.30;
+  if(!inLaunch){
+    const staminaMod=THREE.MathUtils.clamp(1+(96-r.horse.stamina)*.025,.88,1.18);
+    const distanceMod=race.distance>=2000?1.0:race.distance>=1600?.82:.68;
+    const effortLoad=Math.max(0,r.effort-.58);
+    const leadingEarly=(r===leader&&race.distance-r.distance>650)?1:0;
+    const burn=(effortLoad*.022*staminaMod*distanceMod)+(leadingEarly*.00075*distanceMod);
+    r.energy=Math.max(.22,r.energy-scaledDt*burn);
+
+    if(r.effort<.615){
+      r.energy=Math.min(1,r.energy+scaledDt*.00115);
+    }
+  }
 }
 function placeRunner(r,gatePose=false){const fraction=THREE.MathUtils.clamp(r.distance/race.distance,0,1),p=route.getPointAtFraction(fraction),tan=route.getTangentAtFraction(fraction),side=new THREE.Vector3(-tan.z,0,tan.x).normalize();const target=p.clone().addScaledVector(side,r.lateral);if(gatePose)target.addScaledVector(tan,-1.25);target.y=.05;r.root.position.copy(target);r.root.rotation.y=Math.atan2(tan.x,tan.z);}
 
@@ -1027,7 +1040,7 @@ function targetSpeed(r,live,leader){
   // Ritmo táctico: tras ~40 m aparecen punteros, grupo perseguidor y caballos guardados.
   if(elapsed>=2.30){
     if(r.tactic==='front'){
-      factor*=remaining>700?1.012:remaining>350?1.004:1.000;
+      factor*=remaining>700?1.007:remaining>350?1.0025:1.000;
     }else if(r.tactic==='closer'){
       factor*=remaining>900?.988:remaining>650?.995:remaining<650?1.014:1.000;
     }else if(r.tactic==='stalker'){
@@ -1037,7 +1050,14 @@ function targetSpeed(r,live,leader){
 
   const effortSpeed=.79+r.effort*.21;
   factor*=effortSpeed;
-  factor*=.968+.032*r.energy;
+
+  // Con poca reserva el caballo pierde velocidad sostenida y remate.
+  factor*=.905+.095*r.energy;
+  if(r.energy<.62){
+    factor*=1-(.62-r.energy)*.15;
+    if(remaining<700)factor*=1-(.62-r.energy)*.18;
+  }
+  if(r.energy<.38&&remaining<450)factor*=.970;
 
   const launchPhase=elapsed<2.30;
   const gapToLeader=Math.max(0,(leader?.distance||r.distance)-r.distance);
@@ -1049,14 +1069,20 @@ function targetSpeed(r,live,leader){
 
   // No hay filas ni distancias objetivo prefijadas.
   // El grupo se forma de manera natural por ritmo, táctica, terreno y tráfico.
-  // No hay goma elástica artificial: si un caballo queda atrás debe recuperar por su ritmo real.
-
+  // No hay goma elástica para los de atrás.
+  // Si el puntero ha abierto un hueco enorme demasiado pronto, regula el ritmo para guardar.
+  if(!launchPhase&&leader===r&&remaining>700){
+    const second=live.find(o=>o!==r&&!o.finished);
+    const leadGap=second?Math.max(0,r.distance-second.distance):0;
+    if(leadGap>18)factor*=.985;
+    else if(leadGap>10)factor*=.993;
+  }
 
   if(nearestAhead){
     const draftGap=nearestAhead.distance-r.distance;
     if(draftGap>3&&draftGap<12){
       factor*=1.006;
-      r.energy=Math.min(1,r.energy+.0005);
+      r.energy=Math.min(1,r.energy+.00018);
     }
     if(draftGap<1.55&&Math.abs(nearestAhead.lateral-r.lateral)<1.35){
       factor*=.975;
