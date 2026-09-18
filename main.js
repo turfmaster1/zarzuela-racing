@@ -739,11 +739,39 @@ function createStartingGates(count){clearGates();gateGroup=new THREE.Group();gat
 function openGates(){if(gateGroup){gateGroup.userData.opening=true;gateGroup.userData.t=0;}}
 function animateGates(dt){if(!gateGroup?.userData.opening)return;gateGroup.userData.t=Math.min(1,gateGroup.userData.t+dt*4);const e=1-Math.pow(1-gateGroup.userData.t,3);gateGroup.userData.doors.forEach(d=>d.pivot.rotation.y=d.side*e*1.25);if(gateGroup.userData.t>=1)gateGroup.visible=false;}
 
+const RACE_STYLE = {
+  safaga:'stalker',
+  estraunza:'closer',
+  sirjan:'closer',
+  fortun:'stalker',
+  entrecopas:'closer',
+  frine:'front',
+  espoir:'stalker',
+  warofdance:'front',
+  coetzee:'closer',
+  kildare:'stalker',
+  naranco:'front',
+  tetuan:'closer',
+  shackleton:'closer',
+  pamplona:'stalker',
+  ifnotnow:'stalker',
+  thegame:'closer',
+  mediastorm:'stalker',
+  elcaney:'stalker',
+  rodaballo:'front',
+  amedeo:'front',
+  samedi:'front',
+  kingjungle:'front',
+  viciousharry:'front',
+  greatprospector:'front',
+  presidency:'front',
+  elsokhna:'stalker'
+};
 function tacticFor(h){
-  if(h.speed>=96&&h.accel>=96)return 'front';
-  if(h.stamina>=97&&h.speed<=92)return 'closer';
-  if(h.accel>=94&&h.stamina>=94)return 'stalker';
-  return ['front','stalker','closer'][h.catalogNumber%3];
+  if(RACE_STYLE[h.id])return RACE_STYLE[h.id];
+  if(h.speed>=97&&h.accel>=97)return 'front';
+  if(h.stamina>=98)return 'closer';
+  return 'stalker';
 }
 function effortFor(r){
   const d=race.distance,remaining=Math.max(0,d-r.distance);
@@ -753,18 +781,30 @@ function effortFor(r){
     else if(remaining>300)effort=.70+((520-remaining)/220)*.20;
     else effort=.92+((300-remaining)/300)*.08;
   }else if(d>=2000){
-    if(remaining>600)effort=.64;
-    else if(remaining>300)effort=.78+((600-remaining)/300)*.16;
-    else effort=.94+((300-remaining)/300)*.06;
+    if(remaining>700)effort=.64;
+    else if(remaining>350)effort=.77+((700-remaining)/350)*.16;
+    else effort=.93+((350-remaining)/350)*.07;
   }else{
-    if(remaining>550)effort=.68;
-    else if(remaining>300)effort=.76+((550-remaining)/250)*.16;
-    else effort=.93+((300-remaining)/300)*.07;
+    if(remaining>600)effort=.68;
+    else if(remaining>320)effort=.76+((600-remaining)/280)*.16;
+    else effort=.93+((320-remaining)/320)*.07;
   }
-  if(r.tactic==='front'&&remaining>(d<=1600?520:600))effort+=.020;
-  if(r.tactic==='closer'&&remaining<500)effort+=.035;
-  if(r.tactic==='stalker'&&remaining<650)effort+=.018;
-  return THREE.MathUtils.clamp(effort,.60,1);
+
+  // Tras una salida igualada, cada estrategia empieza a dibujar la carrera.
+  if(elapsed>=2.30){
+    if(r.tactic==='front'){
+      if(remaining>700)effort+=.055;
+      else if(remaining>350)effort+=.020;
+    }else if(r.tactic==='closer'){
+      if(remaining>900)effort-=.055;
+      else if(remaining>650)effort-=.025;
+      else if(remaining<650)effort+=.060;
+    }else if(r.tactic==='stalker'){
+      if(remaining>850)effort-=.010;
+      else if(remaining<700)effort+=.032;
+    }
+  }
+  return THREE.MathUtils.clamp(effort,.57,1);
 }
 function laneFree(r,lane,longitudinalWindow=7.5){
   const limit=TRACK_WIDTH/2-2.0;
@@ -805,8 +845,9 @@ function railEfficiencyFor(r){
   const metresFromRail=Math.abs(r.lateral-rail);
   const wide=THREE.MathUtils.clamp((metresFromRail-.45)/10.0,0,1);
   const turn=turnIntensityFor(r);
-  // Ir abierto cuesta metros de verdad: hasta ~6% en la parte exterior de una curva fuerte.
-  return 1-wide*(.005+.055*turn);
+  // En curva la cuerda importa de verdad: el exterior recorre más metros y pierde progresión.
+  // En la calle más abierta el coste puede acercarse al 8% en una curva fuerte.
+  return 1-wide*(.002+.078*turn);
 }
 function stepToward(value,target,step){
   if(Math.abs(target-value)<=step)return target;
@@ -971,6 +1012,18 @@ function targetSpeed(r,live,leader){
   // El perfil de terreno modifica directamente el rendimiento del caballo.
   // Así un heavy/hard puede cambiar el orden, no solo hacer la carrera globalmente más lenta/rápida.
   factor*=Math.pow(terrainFit(h,race.condition),.90);
+
+  // Ritmo táctico: tras ~40 m aparecen punteros, grupo perseguidor y caballos guardados.
+  if(elapsed>=2.30){
+    if(r.tactic==='front'){
+      factor*=remaining>700?1.012:remaining>350?1.004:1.000;
+    }else if(r.tactic==='closer'){
+      factor*=remaining>900?.988:remaining>650?.995:remaining<650?1.014:1.000;
+    }else if(r.tactic==='stalker'){
+      factor*=remaining>850?.998:remaining<700?1.006:1.000;
+    }
+  }
+
   const effortSpeed=.79+r.effort*.21;
   factor*=effortSpeed;
   factor*=.968+.032*r.energy;
@@ -985,9 +1038,8 @@ function targetSpeed(r,live,leader){
 
   // No hay filas ni distancias objetivo prefijadas.
   // El grupo se forma de manera natural por ritmo, táctica, terreno y tráfico.
-  if(!launchPhase&&remaining>220&&gapToLeader>12){
-    factor*=1+Math.min(.010,(gapToLeader-12)*.00035);
-  }
+  // No hay goma elástica artificial: si un caballo queda atrás debe recuperar por su ritmo real.
+
 
   if(nearestAhead){
     const draftGap=nearestAhead.distance-r.distance;
@@ -1069,10 +1121,10 @@ function loop(now){
     const launchPhase=elapsed<2.30;
     const closeAhead=launchPhase?null:runners
       .map(o=>({o,gap:o.distance-previousDistance}))
-      .filter(x=>x.o!==r&&!x.o.finished&&x.gap>.70&&x.gap<2.65&&Math.abs(x.o.lateral-r.lateral)<1.20)
+      .filter(x=>x.o!==r&&!x.o.finished&&x.gap>.45&&x.gap<1.75&&Math.abs(x.o.lateral-r.lateral)<1.05)
       .sort((a,b)=>a.gap-b.gap)[0]?.o;
     if(closeAhead){
-      const safeGap=1.85;
+      const safeGap=1.35;
       const maxAllowed=Math.max(previousDistance,closeAhead.distance-safeGap);
       r.distance=Math.min(proposedDistance,maxAllowed);
     }else{
@@ -1081,17 +1133,25 @@ function loop(now){
     if(r.distance>=race.distance){r.distance=race.distance;r.finished=true;r.time=elapsed;finishOrder.push(r);if(finishOrder.length===1){finishPhotoPending=true;$('finishFlash').classList.add('show');}}
     placeRunner(r);r.mixer.update(dt*state.raceSpeed*(.82+r.speed/20));
   });
-  // Cinturón de seguridad final: si dos caballos quedan demasiado juntos en la misma calle,
-  // el de atrás se coloca detrás en vez de atravesar el modelo delantero.
-  const safetyOrder=[...runners].filter(x=>!x.finished).sort((a,b)=>b.distance-a.distance);
-  if(elapsed>=2.30)for(let i=0;i<safetyOrder.length;i++){
-    const front=safetyOrder[i];
-    for(let j=i+1;j<safetyOrder.length;j++){
-      const back=safetyOrder[j];
-      const gap=front.distance-back.distance;
-      if(Math.abs(front.lateral-back.lateral)<1.15&&gap>.55&&gap<1.85){
-        back.distance=Math.max(0,front.distance-1.85);
-        back.speed=Math.min(back.speed,front.speed*.995);
+  // Separación física suave: si dos modelos se montan, se abre el más exterior.
+  // Nunca se recoloca a un caballo hacia atrás de golpe.
+  if(elapsed>=2.30){
+    const active=runners.filter(x=>!x.finished);
+    for(let i=0;i<active.length;i++){
+      for(let j=i+1;j<active.length;j++){
+        const a=active[i],b=active[j];
+        const longitudinal=Math.abs(a.distance-b.distance);
+        const lateralGap=Math.abs(a.lateral-b.lateral);
+        if(longitudinal<1.45&&lateralGap<1.15){
+          const railA=railTargetFor(a),railB=railTargetFor(b);
+          const aFromRail=Math.abs(a.lateral-railA);
+          const bFromRail=Math.abs(b.lateral-railB);
+          const outer=aFromRail>=bFromRail?a:b;
+          const dir=-interiorSignFor(outer);
+          const limit=TRACK_WIDTH/2-2.05;
+          outer.lateral=THREE.MathUtils.clamp(outer.lateral+dir*.24,-limit,limit);
+          outer.targetLateral=outer.lateral;
+        }
       }
     }
   }
