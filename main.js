@@ -258,7 +258,7 @@ function assignJockeys(field){
     if(h.stable==='Yeguada Rocío'){
       capColor=[0xf5f5ef,0x0d5c3d,0xf5f5ef,0x0d5c3d][stableIndex%4];
     }else if(h.stable==='Becares'){
-      capColor=[0xf05a18,0xd71920,0xf05a18,0xd71920][stableIndex%4];
+      capColor=[0xf05a18,0x1746b8,0xf05a18,0x1746b8][stableIndex%4];
     }else if(h.id==='safaga')capColor=0x20c9c3;
     else if(h.id==='sirjan')capColor=0xf05a18;
     else if(h.id==='fortun')capColor=0x090a0b;
@@ -307,7 +307,13 @@ function makeRunner(h){
     for(const mat of mats){
       const name=(mat?.name||'').toLowerCase();
       const horseLeg=/leg|limb|fetlock|pastern|cannon|sock/.test(name+' '+objectName);
-      if(name.includes('horse_teeth')){setMaterialColor(mat,0x5a493b);mat.map=null;mat.needsUpdate=true;}
+      if(objectName.includes('jockey_helmet')){
+        mat.map=null;
+        setMaterialColor(mat,h.capColor??h.accent);
+        mat.roughness=.68;
+        mat.needsUpdate=true;
+      }
+      else if(name.includes('horse_teeth')){setMaterialColor(mat,0x5a493b);mat.map=null;mat.needsUpdate=true;}
       else if(name.includes('horse_gums')){setMaterialColor(mat,0x4a2727);mat.map=null;mat.needsUpdate=true;}
       else if(name.includes('horse_cornea')){mat.transparent=true;mat.opacity=.16;mat.depthWrite=false;mat.needsUpdate=true;}
       else if(name==='horse_hooves'||horseLeg||name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x090705);mat.map=null;mat.roughness=.88;mat.metalness=0;mat.needsUpdate=true;}
@@ -315,7 +321,7 @@ function makeRunner(h){
       else if(name.includes('jockey_silk_main')||name.includes('jockey_silk_primary')){mat.map=jockeySilkTexture;setMaterialColor(mat,0xffffff);mat.roughness=.72;mat.needsUpdate=true;}
       else if(name.includes('jockey_silk_secondary.001')){mat.map=null;setMaterialColor(mat,h.capColor??h.accent);}
       else if(name.includes('jockey_silk_secondary'))setMaterialColor(mat,h.id==='safaga'?h.silk:h.accent);
-      else if(name.includes('jockey_helmet')||name.includes('helmet')||name.includes('jockey_cap')){mat.map=null;setMaterialColor(mat,h.capColor??h.accent);}
+
       else if(name.includes('jockey_boot'))setMaterialColor(mat,0x171717);
       else if(name.includes('jockey_breeches')||name.includes('jockey_pants'))setMaterialColor(mat,0xf5f5f2);
       else if(name==='saddlecloth')setMaterialColor(mat,0x111111);
@@ -381,7 +387,7 @@ function effortFor(r){
 function laneFree(r,lane,longitudinalWindow=7.5){
   const limit=TRACK_WIDTH/2-2.0;
   if(Math.abs(lane)>limit)return false;
-  return !runners.some(o=>o!==r&&!o.finished&&Math.abs(o.distance-r.distance)<longitudinalWindow&&Math.abs(o.lateral-lane)<1.70);
+  return !runners.some(o=>o!==r&&!o.finished&&Math.abs(o.distance-r.distance)<longitudinalWindow&&Math.abs(o.lateral-lane)<2.05);
 }
 function interiorSignFor(r){
   const f=THREE.MathUtils.clamp(r.distance/race.distance,0,1);
@@ -442,26 +448,46 @@ function updateRaceAI(r,dt,live,leader){
   const railTarget=railTargetFor(r);
 
   if(!inFinal){
-    // GRUPO ESCALONADO: puntero, primera línea, segunda línea, etc.
-    // Cada fila tiene hasta 3 caballos y todos ocupan preferentemente las calles interiores.
+    // En 1000/1200 m no forzamos interior: son recorridos rectos.
+    const straightOnly=race.distance<=1200;
     const row=r.packRow||0;
     const col=r.packCol||0;
-    const laneOffsets=[1.00,2.85,4.75];
+    const laneOffsets=[1.00,3.30,5.60];
     let packLane;
     if(row===0)packLane=railTarget-insideSign*.85;
-    else if(row===1)packLane=railTarget-insideSign*(col===1?2.15:4.05);
+    else if(row===1)packLane=railTarget-insideSign*(col===1?2.20:4.50);
     else packLane=railTarget-insideSign*laneOffsets[col];
 
     if(r.nextDecision<=0&&r.laneLock<=0){
-      if(laneFree(r,packLane,5.8)){
-        r.targetLateral=packLane;
-        r.maneuver='pack-row';
-      }else{
+      r.mergeBlocked=false;
+
+      if(straightOnly){
+        // En recta pura mantiene una calle segura y no se obliga a buscar palos.
         r.targetLateral=r.lateral;
-        r.maneuver='pack-hold';
+        r.maneuver='straight-hold';
+      }else{
+        // En carreras con curva, TODO caballo que salga abierto busca el interior progresivamente.
+        // No salta de golpe: va cerrándose por pasos para poder colocarse detrás de otro si hace falta.
+        const step=r.distance<120?1.05:1.35;
+        const inwardLane=stepToward(r.lateral,packLane,step);
+        const smallerStep=stepToward(r.lateral,packLane,step*.55);
+
+        if(laneFree(r,inwardLane,5.0)){
+          r.targetLateral=inwardLane;
+          r.maneuver='merge-inside';
+        }else if(laneFree(r,smallerStep,4.2)){
+          r.targetLateral=smallerStep;
+          r.maneuver='merge-inside-slow';
+        }else{
+          // Si no cabe, no atraviesa: espera detrás y vuelve a intentarlo.
+          r.targetLateral=r.lateral;
+          r.maneuver='merge-wait';
+          r.mergeBlocked=true;
+        }
       }
-      r.laneLock=1.45+Math.random()*.35;
-      r.nextDecision=.80+Math.random()*.30;
+
+      r.laneLock=.95+Math.random()*.25;
+      r.nextDecision=.48+Math.random()*.20;
     }
   }else if(!r.finalMoveChosen){
     // SALIDA DEL PARDO / RECTA FINAL: busca hueco real entre interior, medio y exterior.
@@ -500,8 +526,8 @@ function updateRaceAI(r,dt,live,leader){
   const proposedLateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
   const lateralConflict=runners.some(o=>
     o!==r&&!o.finished&&
-    Math.abs(o.distance-r.distance)<2.75&&
-    Math.abs(o.lateral-proposedLateral)<1.65
+    Math.abs(o.distance-r.distance)<4.10&&
+    Math.abs(o.lateral-proposedLateral)<2.00
   );
   if(!lateralConflict)r.lateral=proposedLateral;
 
@@ -585,6 +611,7 @@ function targetSpeed(r,live,leader){
   }
 
   if(r.blocked)factor*=.990;
+  if(r.mergeBlocked&&d>1200)factor*=.975;
 
   // El exterior paga la distancia extra durante toda la curva.
   // Solo se neutraliza cuando ya están realmente rectos en la recta final.
@@ -637,10 +664,10 @@ function loop(now){
     const previousDistance=r.distance;
     const proposedDistance=previousDistance+r.speed*dt*state.raceSpeed;
     const closeAhead=runners
-      .filter(o=>o!==r&&!o.finished&&o.distance>previousDistance&&Math.abs(o.lateral-r.lateral)<1.75)
+      .filter(o=>o!==r&&!o.finished&&o.distance>previousDistance&&Math.abs(o.lateral-r.lateral)<2.05)
       .sort((a,b)=>a.distance-b.distance)[0];
     if(closeAhead){
-      const maxAllowed=Math.max(previousDistance,closeAhead.distance-2.55);
+      const maxAllowed=Math.max(previousDistance,closeAhead.distance-3.45);
       r.distance=Math.min(proposedDistance,maxAllowed);
     }else{
       r.distance=proposedDistance;
@@ -648,6 +675,21 @@ function loop(now){
     if(r.distance>=race.distance){r.distance=race.distance;r.finished=true;r.time=elapsed;finishOrder.push(r);if(finishOrder.length===1){finishPhotoPending=true;$('finishFlash').classList.add('show');}}
     placeRunner(r);r.mixer.update(dt*state.raceSpeed*(.82+r.speed/20));
   });
+  // Cinturón de seguridad final: si dos caballos quedan demasiado juntos en la misma calle,
+  // el de atrás se coloca detrás en vez de atravesar el modelo delantero.
+  const safetyOrder=[...runners].filter(x=>!x.finished).sort((a,b)=>b.distance-a.distance);
+  for(let i=0;i<safetyOrder.length;i++){
+    const front=safetyOrder[i];
+    for(let j=i+1;j<safetyOrder.length;j++){
+      const back=safetyOrder[j];
+      if(Math.abs(front.lateral-back.lateral)<2.05&&front.distance-back.distance<3.45){
+        back.distance=Math.max(0,front.distance-3.45);
+        back.speed=Math.min(back.speed,front.speed*.985);
+      }
+    }
+  }
+  runners.forEach(r=>{if(!r.finished)placeRunner(r);});
+
   if(finishPhotoPending){captureFinishPhoto();finishPhotoPending=false;}
   if(finishOrder.length===runners.length){finished=true;setTimeout(results,700);}
   updateCamera(dt);if(now-lastRankRender>90){updateRank();lastRankRender=now;}renderer.render(scene,camera);if(!finished)raf=requestAnimationFrame(loop);
