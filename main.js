@@ -1179,7 +1179,20 @@ function loop(now){
     }else{
       r.distance=proposedDistance;
     }
-    if(r.distance>=race.distance){r.distance=race.distance;r.finished=true;r.time=elapsed;finishOrder.push(r);if(finishOrder.length===1){finishPhotoPending=true;$('finishFlash').classList.add('show');}}
+    if(r.distance>=race.distance){
+      const frameSeconds=dt*state.raceSpeed;
+      const travelled=Math.max(.000001,r.distance-previousDistance);
+      const crossFraction=THREE.MathUtils.clamp((race.distance-previousDistance)/travelled,0,1);
+      r.time=(elapsed-frameSeconds)+crossFraction*frameSeconds;
+      r.distance=race.distance;
+      r.finished=true;
+      finishOrder.push(r);
+      finishOrder.sort((a,b)=>a.time-b.time);
+      if(finishOrder.length===1){
+        finishPhotoPending=true;
+        $('finishFlash').classList.add('show');
+      }
+    }
     placeRunner(r);r.mixer.update(dt*state.raceSpeed*(.82+r.speed/20));
   });
   // Separación física suave: si dos modelos se montan, se abre el más exterior.
@@ -1297,7 +1310,7 @@ function createRaceMemoryCard(r,winnerHorse){
   return c.toDataURL('image/jpeg',.9);
 }
 function results(){
-  const rr=[...finishOrder],winner=rr[0]?.time||0;
+  const rr=[...finishOrder].sort((a,b)=>a.time-b.time),winner=rr[0]?.time||0;
   saveRaceStats(rr);
   $('resultTitle').textContent=race.name;
   $('resultSubtitle').textContent=race.distance.toLocaleString('es-ES')+' m · '+race.venue;
@@ -1312,8 +1325,19 @@ function results(){
   }else{
     memory.style.display='none';
   }
-  $('podium').innerHTML=rr.slice(0,3).map((r,i)=>`<div class="podium-card"><span>${i+1}º</span><div style="display:flex;align-items:center;gap:9px;min-width:0">${miniSilk(r.horse)}<b>${r.horse.raceNumber}. ${r.horse.name}</b></div><small>${r.horse.assignedJockey}</small></div>`).join('');
-  $('classification').innerHTML=rr.map((r,i)=>`<div class="class-row"><strong>${i+1}º</strong><div><b>${r.horse.raceNumber}. ${r.horse.name}</b><br><span>${r.horse.stable}</span></div><span>${r.horse.assignedJockey}</span><b>${i?`+${(r.time-winner).toFixed(2)}s`:r.time.toFixed(2)+'s'}</b></div>`).join('');
+  const positionLabel=(i)=>{
+    if(i===0)return '1º';
+    const tied=Math.abs(rr[i].time-rr[i-1].time)<.001;
+    return tied?((i)+'º ='):(i+1)+'º';
+  };
+  $('podium').innerHTML=rr.slice(0,3).map((r,i)=>`<div class="podium-card"><span>${positionLabel(i)}</span><div style="display:flex;align-items:center;gap:9px;min-width:0">${miniSilk(r.horse)}<b>${r.horse.raceNumber}. ${r.horse.name}</b></div><small>${r.horse.assignedJockey}</small></div>`).join('');
+  $('classification').innerHTML=rr.map((r,i)=>{
+    const gap=r.time-winner;
+    const tied=i>0&&Math.abs(r.time-rr[i-1].time)<.001;
+    const photo=!tied&&i>0&&Math.abs(r.time-rr[i-1].time)<.020;
+    const timeText=i===0?r.time.toFixed(3)+'s':tied?'EMPATE':`+${gap.toFixed(3)}s${photo?' · FOTO':''}`;
+    return `<div class="class-row"><strong>${positionLabel(i)}</strong><div><b>${r.horse.raceNumber}. ${r.horse.name}</b><br><span>${r.horse.stable}</span></div><span>${r.horse.assignedJockey}</span><b>${timeText}</b></div>`;
+  }).join('');
   show('resultsScreen');
 }
 
