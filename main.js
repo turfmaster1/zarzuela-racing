@@ -578,7 +578,9 @@ function loop(now){
     renderer.render(scene,camera);if(!finished)raf=requestAnimationFrame(loop);return;
   }else if(orbitControls){orbitControls.enabled=false;}
   if(!running){
-    updateCamera(dt);updateRank();renderer.render(scene,camera);
+    updateCamera(dt);
+    if(now-lastRankRender>120){updateRank();lastRankRender=now;}
+    renderer.render(scene,camera);
     if(!finished)raf=requestAnimationFrame(loop);return;
   }
   animateGates(dt);
