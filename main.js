@@ -94,7 +94,7 @@ $('bestBtn').onclick=()=>{const d=currentRace().distance;state.selected.clear();
 // ESCENA: geometría basada en la versión La Zarzuela aportada
 // ============================================================
 let scene,camera,renderer,orbitControls,horseTemplate,horseClips={},worldBuilt=false;
-let race=null,runners=[],route=null,gateGroup=null,raf=0,last=0,startTime=0,elapsed=0,running=false,finished=false,finishOrder=[],snapshot='',fieldAbility=0;
+let race=null,runners=[],route=null,gateGroup=null,raf=0,last=0,startTime=0,elapsed=0,running=false,finished=false,finishOrder=[],snapshot='',fieldAbility=0,finishPhotoPending=false;
 const loader=new GLTFLoader();
 const host=$('webglHost');
 const TRACK_WIDTH=30,TRACK_LENGTH=1000,FINISH_X=205,START_X=FINISH_X-TRACK_LENGTH,PARDO_JOIN_X=START_X+400;
@@ -324,6 +324,20 @@ function interiorSignFor(r){
 function railTargetFor(r){
   return interiorSignFor(r)*(TRACK_WIDTH/2-3.0);
 }
+function turnIntensityFor(r){
+  const f=THREE.MathUtils.clamp(r.distance/race.distance,0,1);
+  const a=route.getTangentAtFraction(Math.max(0,f-.004));
+  const b=route.getTangentAtFraction(Math.min(1,f+.004));
+  const angle=Math.acos(THREE.MathUtils.clamp(a.dot(b),-1,1));
+  return THREE.MathUtils.clamp(angle/.085,0,1);
+}
+function railEfficiencyFor(r){
+  const rail=railTargetFor(r);
+  const metresFromRail=Math.abs(r.lateral-rail);
+  const wide=THREE.MathUtils.clamp((metresFromRail-1.2)/10.5,0,1);
+  const turn=turnIntensityFor(r);
+  return 1-wide*(.0035+.0215*turn);
+}
 function stepToward(value,target,step){
   if(Math.abs(target-value)<=step)return target;
   return value+Math.sign(target-value)*step;
@@ -365,7 +379,7 @@ function updateRaceAI(r,dt){
         }
       }else{
         // Sin tráfico delante, todos intentan colocarse progresivamente hacia los palos.
-        const nextRailLane=stepToward(r.lateral,railTarget,1.75);
+        const nextRailLane=stepToward(r.lateral,railTarget,r.maneuver==='outside-pass'?2.25:1.95);
         if(laneFree(r,nextRailLane,5.6)){
           r.targetLateral=nextRailLane;
           r.maneuver='rail';
@@ -391,7 +405,7 @@ function updateRaceAI(r,dt){
 }
 function placeRunner(r,gatePose=false){const fraction=THREE.MathUtils.clamp(r.distance/race.distance,0,1),p=route.getPointAtFraction(fraction),tan=route.getTangentAtFraction(fraction),side=new THREE.Vector3(-tan.z,0,tan.x).normalize();const target=p.clone().addScaledVector(side,r.lateral);if(gatePose)target.addScaledVector(tan,-1.25);target.y=.05;r.root.position.copy(target);r.root.rotation.y=Math.atan2(tan.x,tan.z);}
 
-async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';state.raceSpeed=1;state.cameraMode=0;state.paused=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$('loadOverlay').classList.add('hidden');startTime=performance.now();last=performance.now();raf=requestAnimationFrame(loop);}
+async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$('loadOverlay').classList.add('hidden');startTime=performance.now();last=performance.now();raf=requestAnimationFrame(loop);}
 
 function targetSpeed(r){
   const d=race.distance,h=r.horse,progress=r.distance/d,remaining=d-r.distance;
@@ -425,12 +439,29 @@ function targetSpeed(r){
   }
 
   if(r.blocked)factor*=.990;
+
+  // Ir abierto cuesta metros, sobre todo en curva. El interior de los palos es la posición eficiente.
+  factor*=railEfficiencyFor(r);
+
   const fatigue=progress*progress*Math.max(0,94-h.stamina)*.00056*(d>=2200?1.12:.70);
   factor-=fatigue;
   if(remaining<300)factor*=1+(1-remaining/300)*(h.accel-88)*.00135;
   factor*=1+Math.sin(elapsed*.9+r.phase)*.0012;
   const min=h.specialty==='sprinter'&&d>=2400?.90:.91;
   return base*THREE.MathUtils.clamp(factor,min,1.055);
+}
+function captureFinishPhoto(){
+  const oldPos=camera.position.clone(),oldQuat=camera.quaternion.clone(),oldFov=camera.fov;
+  camera.position.set(FINISH_X+34,4.7,BOTTOM_Z+1.2);
+  camera.fov=34;
+  camera.updateProjectionMatrix();
+  camera.lookAt(FINISH_X-18,1.65,BOTTOM_Z);
+  renderer.render(scene,camera);
+  snapshot=renderer.domElement.toDataURL('image/jpeg',.88);
+  camera.position.copy(oldPos);
+  camera.quaternion.copy(oldQuat);
+  camera.fov=oldFov;
+  camera.updateProjectionMatrix();
 }
 function loop(now){
   const dt=Math.min(.04,(now-last)/1000||.016);last=now;
@@ -450,9 +481,10 @@ function loop(now){
     updateRaceAI(r,dt);
     const ts=targetSpeed(r),resp=1-Math.exp(-(2.6+r.horse.accel*.01)*dt*state.raceSpeed);
     r.speed=THREE.MathUtils.lerp(r.speed,ts,resp);r.distance+=r.speed*dt*state.raceSpeed;
-    if(r.distance>=race.distance){r.distance=race.distance;r.finished=true;r.time=elapsed;finishOrder.push(r);if(finishOrder.length===1){snapshot=renderer.domElement.toDataURL('image/jpeg',.82);$('finishFlash').classList.add('show');}}
+    if(r.distance>=race.distance){r.distance=race.distance;r.finished=true;r.time=elapsed;finishOrder.push(r);if(finishOrder.length===1){finishPhotoPending=true;$('finishFlash').classList.add('show');}}
     placeRunner(r);r.mixer.update(dt*state.raceSpeed*(.82+r.speed/20));
   });
+  if(finishPhotoPending){captureFinishPhoto();finishPhotoPending=false;}
   if(finishOrder.length===runners.length){finished=true;setTimeout(results,700);}
   updateCamera(dt);updateRank();renderer.render(scene,camera);if(!finished)raf=requestAnimationFrame(loop);
 }
