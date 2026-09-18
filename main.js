@@ -364,69 +364,60 @@ function updateRaceAI(r,dt,live,leader){
   const scaledDt=dt*state.raceSpeed;
   r.nextDecision-=scaledDt;
   r.laneLock=Math.max(0,r.laneLock-scaledDt);
+
   const remaining=race.distance-r.distance;
+  const finalAttackDistance=race.distance<=1600?430:560;
+  const inFinal=remaining<=finalAttackDistance;
   const insideSign=interiorSignFor(r);
   const outsideSign=-insideSign;
   const railTarget=railTargetFor(r);
 
-  if(r.nextDecision<=0){
-    const blockers=runners
-      .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&o.distance-r.distance<9.0&&Math.abs(o.lateral-r.lateral)<1.75)
-      .sort((a,b)=>a.distance-b.distance);
-    r.blocked=blockers.length>0;
+  if(!inFinal){
+    // FASE DE GRUPO: un puntero y el resto compactos detrás, sin ataques prematuros.
+    const column=(r.packSlot||0)%3;
+    const targetPackLane=railTarget-insideSign*(1.1+column*1.95);
 
-    const settled=Math.abs(r.targetLateral-r.lateral)<.28;
-    if(r.laneLock<=0&&settled){
-      if(r.blocked){
-        const inLane=r.lateral+insideSign*2.35;
-        const outLane=r.lateral+outsideSign*2.45;
-        const inFree=laneFree(r,inLane,8.2);
-        const outFree=laneFree(r,outLane,8.2);
-
-        // Si aparece hueco por dentro, lo prioriza. Solo se abre si el interior está cerrado.
-        if(inFree){
-          r.targetLateral=inLane;
-          r.maneuver='inside-pass';
-          r.laneLock=3.0+Math.random()*.8;
-        }else if(outFree){
-          r.targetLateral=outLane;
-          r.maneuver='outside-pass';
-          r.laneLock=3.0+Math.random()*.8;
-        }else{
-          r.targetLateral=r.lateral;
-          r.maneuver='boxed';
-          r.laneLock=1.0+Math.random()*.35;
-        }
+    if(r.nextDecision<=0&&r.laneLock<=0){
+      if(laneFree(r,targetPackLane,6.5)){
+        r.targetLateral=targetPackLane;
+        r.maneuver='pack';
       }else{
-        const metresFromRail=Math.abs(r.lateral-railTarget);
-        const settledIntoRace=r.distance>Math.min(120,race.distance*.06);
-        const canSeekRail=settledIntoRace&&remaining>180&&metresFromRail>2.2;
-
-        if(canSeekRail){
-          // Acercamiento progresivo a los palos: un paso pequeño y comprometido, nunca zigzag.
-          const inwardLane=stepToward(r.lateral,railTarget,1.20);
-          if(laneFree(r,inwardLane,7.6)){
-            r.targetLateral=inwardLane;
-            r.maneuver='seek-rail';
-            r.laneLock=1.9+Math.random()*.55;
-          }else{
-            r.targetLateral=r.lateral;
-            r.maneuver='hold-line';
-            r.laneLock=1.2+Math.random()*.40;
-          }
-        }else{
-          r.targetLateral=r.lateral;
-          r.maneuver='hold-line';
-          r.laneLock=1.2+Math.random()*.40;
-        }
+        r.targetLateral=r.lateral;
+        r.maneuver='pack-hold';
       }
+      r.laneLock=1.6+Math.random()*.45;
+      r.nextDecision=.85+Math.random()*.35;
     }
+  }else{
+    // RECTA FINAL: una sola decisión clara. Interior, exterior o mantener línea.
+    if(!r.finalMoveChosen){
+      const inLane=stepToward(r.lateral,railTarget,2.35);
+      const outLane=r.lateral+outsideSign*2.55;
+      const inFree=laneFree(r,inLane,7.0);
+      const outFree=laneFree(r,outLane,7.0);
+      const roll=Math.random();
 
-    r.nextDecision=.75+Math.random()*.45;
+      if(r.tactic==='closer'&&outFree&&roll<.58){
+        r.targetLateral=outLane;
+        r.maneuver='final-outside';
+      }else if(inFree&&roll<.48){
+        r.targetLateral=inLane;
+        r.maneuver='final-inside';
+      }else if(outFree&&roll<.76){
+        r.targetLateral=outLane;
+        r.maneuver='final-outside';
+      }else{
+        r.targetLateral=r.lateral;
+        r.maneuver='final-hold';
+      }
+
+      r.finalMoveChosen=true;
+      r.laneLock=99;
+      r.nextDecision=99;
+    }
   }
 
-  // Cambio de calle progresivo y sin invertir la maniobra a mitad.
-  const laneBlend=1-Math.exp(-.88*scaledDt);
+  const laneBlend=1-Math.exp(-(inFinal?1.15:.78)*scaledDt);
   r.lateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
 
   r.effort=effortFor(r);
@@ -435,9 +426,14 @@ function updateRaceAI(r,dt,live,leader){
 }
 function placeRunner(r,gatePose=false){const fraction=THREE.MathUtils.clamp(r.distance/race.distance,0,1),p=route.getPointAtFraction(fraction),tan=route.getTangentAtFraction(fraction),side=new THREE.Vector3(-tan.z,0,tan.x).normalize();const target=p.clone().addScaledVector(side,r.lateral);if(gatePose)target.addScaledVector(tan,-1.25);target.y=.05;r.root.position.copy(target);r.root.rotation.y=Math.atan2(tan.x,tan.z);}
 
-async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;racePaceLeader=null;lastRankRender=0;smoothCameraFocusReady=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;state.manualCamera=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finalLaneChosen:false,finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});
+async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';finishPhotoPending=false;racePaceLeader=null;lastRankRender=0;smoothCameraFocusReady=false;state.raceSpeed=1;state.cameraMode=0;state.paused=false;state.manualCamera=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,laneLock:.35+Math.random()*.25,maneuver:'start',finalLaneChosen:false,finalMoveChosen:false,packSlot:0,finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});
 const paceCandidates=runners.filter(x=>x.tactic==='front');
 racePaceLeader=(paceCandidates.length?paceCandidates[Math.floor(Math.random()*paceCandidates.length)]:runners[0])||null;
+const packOrder=[racePaceLeader,...runners.filter(x=>x!==racePaceLeader).sort((a,b)=>{
+  const priority={front:0,stalker:1,closer:2};
+  return (priority[a.tactic]??1)-(priority[b.tactic]??1) || rating(b.horse,r.distance)-rating(a.horse,r.distance);
+})];
+packOrder.forEach((runner,i)=>runner.packSlot=i);
 createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$('loadOverlay').classList.add('hidden');startTime=performance.now();last=performance.now();raf=requestAnimationFrame(loop);}
 
 function targetSpeed(r,live,leader){
@@ -453,25 +449,28 @@ function targetSpeed(r,live,leader){
     .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&Math.abs(o.lateral-r.lateral)<1.80)
     .sort((a,b)=>a.distance-b.distance)[0];
 
-  const packPhase=remaining>(d<=1600?450:600);
+  const finalAttackDistance=d<=1600?430:560;
+  const packPhase=remaining>finalAttackDistance;
   if(packPhase&&racePaceLeader){
-    const orderIndex=Math.max(0,live.indexOf(r));
-    const detached=r.tactic==='closer'?3.6:0;
-    const desiredGap=r===racePaceLeader?0:Math.min(9.5,1.8+orderIndex*.72+detached);
-    const actualGap=Math.max(0,racePaceLeader.distance-r.distance);
+    const slot=r.packSlot||0;
+    const desiredGap=slot===0?0:Math.min(8.4,.85+slot*.68);
+    const actualGap=racePaceLeader.distance-r.distance;
 
     if(r===racePaceLeader){
       const second=live.find(o=>o!==r);
-      if(second&&r.distance-second.distance>4.8)factor*=.992;
-      else factor*=1.002;
+      if(second&&r.distance-second.distance>3.2)factor*=.986;
+      else factor*=1.004;
     }else{
-      if(actualGap>desiredGap+1.5)factor*=1+Math.min(.020,(actualGap-desiredGap)*.0018);
-      if(actualGap<Math.max(.4,desiredGap-1.2))factor*=.994;
-      if(r.distance>racePaceLeader.distance-.25)factor*=.990;
+      // Mantiene el grupo comprimido: recupera si queda atrás y frena si se echa encima.
+      const error=actualGap-desiredGap;
+      if(error>0)factor*=1+Math.min(.048,error*.0060);
+      else factor*=1-Math.min(.045,Math.abs(error)*.0070);
+
+      // Antes de la recta nadie debe quitarle claramente la punta al puntero.
+      if(r.distance>racePaceLeader.distance-.55)factor*=.955;
     }
-  }else if(remaining>380){
-    if(gapToLeader>7)factor*=1+Math.min(.017,(gapToLeader-7)*.00055);
-    if(r===leader&&live[1]&&r.distance-live[1].distance>5)factor*=.994;
+  }else if(remaining>220){
+    if(gapToLeader>6)factor*=1+Math.min(.020,(gapToLeader-6)*.0008);
   }
 
   if(nearestAhead){
@@ -489,8 +488,9 @@ function targetSpeed(r,live,leader){
 
   if(r.blocked)factor*=.990;
 
-  // Ir abierto cuesta metros, sobre todo en curva. El interior de los palos es la posición eficiente.
-  factor*=railEfficiencyFor(r);
+  // En carrera normal ir abierto cuesta; en la recta final se permite atacar por fuera sin castigo excesivo.
+  if(remaining>(d<=1600?430:560))factor*=railEfficiencyFor(r);
+  else factor*=THREE.MathUtils.lerp(1,railEfficiencyFor(r),.30);
 
   const fatigue=progress*progress*Math.max(0,94-h.stamina)*.00056*(d>=2200?1.12:.70);
   factor-=fatigue;
