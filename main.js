@@ -875,7 +875,7 @@ function updateRaceAI(r,dt,live,leader){
   r.laneLock=Math.max(0,r.laneLock-scaledDt);
 
   const remaining=race.distance-r.distance;
-  const finalAttackDistance=race.distance<=1600?440:575;
+  const finalAttackDistance=race.distance<=1600?460:650;
   const insideSign=interiorSignFor(r);
   const railTarget=railTargetFor(r);
   const turn=turnIntensityFor(r);
@@ -939,36 +939,47 @@ function updateRaceAI(r,dt,live,leader){
       r.laneLock=.24+Math.random()*.12;
       r.nextDecision=.18+Math.random()*.12;
     }
-  }else if(!r.finalMoveChosen){
-    // Recta final: aquí sí se abre el abanico buscando una salida limpia.
-    const finalSlots=[.85,2.65,4.65,6.85].map(x=>railTarget-insideSign*x);
-    const candidates=finalSlots.map((lane,i)=>({
-      name:['final-inside','final-middle','final-outside','final-wide'][i],
-      lane,
-      score:laneOpportunity(r,lane)+[1.05,.62,.25,0][i]
-    }));
+  }else{
+    // Últimos metros: reevaluación suave para que haya adelantamientos y búsqueda de huecos reales.
+    if(r.nextDecision<=0&&r.laneLock<=0){
+      const finalSlots=[.75,2.55,4.55,6.75].map(x=>railTarget-insideSign*x);
+      const currentBlocker=live
+        .filter(o=>o!==r&&!o.finished)
+        .map(o=>({o,gap:o.distance-r.distance,lat:Math.abs(o.lateral-r.lateral)}))
+        .filter(x=>x.gap>.45&&x.gap<6.5&&x.lat<1.55)
+        .sort((a,b)=>a.gap-b.gap)[0];
 
-    if(r.tactic==='closer'){
-      candidates[2].score+=.70;
-      candidates[3].score+=.45;
+      const candidates=finalSlots.map((lane,i)=>({
+        name:['final-inside','final-middle','final-outside','final-wide'][i],
+        lane,
+        score:laneOpportunity(r,lane)+[1.10,.70,.30,0][i]
+      }));
+
+      if(r.tactic==='closer'){
+        candidates[1].score+=.35;
+        candidates[2].score+=.85;
+        candidates[3].score+=.55;
+      }
+      if(r.tactic==='front')candidates[0].score+=.45;
+      if(r.tactic==='stalker'){
+        candidates[1].score+=.50;
+        candidates[2].score+=.30;
+      }
+
+      const currentScore=laneOpportunity(r,r.lateral)+(currentBlocker?-.55:.35);
+      const best=candidates.sort((a,b)=>b.score-a.score)[0];
+
+      if(best.score>currentScore+.05){
+        r.targetLateral=best.lane;
+        r.maneuver=best.name;
+      }else{
+        r.targetLateral=r.lateral;
+        r.maneuver='final-hold';
+      }
+
+      r.laneLock=.26+Math.random()*.16;
+      r.nextDecision=.22+Math.random()*.18;
     }
-    if(r.tactic==='front')candidates[0].score+=.45;
-    if(r.tactic==='stalker')candidates[1].score+=.40;
-
-    const currentScore=laneOpportunity(r,r.lateral)+.30;
-    const best=candidates.sort((a,b)=>b.score-a.score)[0];
-
-    if(best.score>currentScore+.10){
-      r.targetLateral=best.lane;
-      r.maneuver=best.name;
-    }else{
-      r.targetLateral=r.lateral;
-      r.maneuver='final-hold';
-    }
-
-    r.finalMoveChosen=true;
-    r.laneLock=99;
-    r.nextDecision=99;
   }
 
   // Cierre más decidido hacia cuerda; apertura final más rápida para que se vean los ataques.
@@ -1062,7 +1073,7 @@ function targetSpeed(r,live,leader){
 
   // El exterior paga la distancia extra durante toda la curva.
   // Solo se neutraliza cuando ya están realmente rectos en la recta final.
-  const finalStraight=remaining<(d<=1600?440:575)&&turnIntensityFor(r)<.10;
+  const finalStraight=remaining<(d<=1600?460:650)&&turnIntensityFor(r)<.10;
   if(!finalStraight)factor*=railEfficiencyFor(r);
   else factor*=THREE.MathUtils.lerp(1,railEfficiencyFor(r),.06);
 
