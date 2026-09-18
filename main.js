@@ -793,15 +793,15 @@ function effortFor(r){
   // Tras una salida igualada, cada estrategia empieza a dibujar la carrera.
   if(elapsed>=2.30){
     if(r.tactic==='front'){
-      if(remaining>700)effort+=.040;
-      else if(remaining>350)effort+=.016;
+      if(remaining>700)effort+=.025;
+      else if(remaining>350)effort+=.010;
     }else if(r.tactic==='closer'){
-      if(remaining>900)effort-=.055;
-      else if(remaining>650)effort-=.025;
-      else if(remaining<650)effort+=.060;
+      if(remaining>900)effort-=.020;
+      else if(remaining>650)effort-=.008;
+      else if(remaining<650)effort+=.045;
     }else if(r.tactic==='stalker'){
-      if(remaining>850)effort-=.010;
-      else if(remaining<700)effort+=.032;
+      if(remaining>850)effort-=.004;
+      else if(remaining<700)effort+=.022;
     }
   }
   return THREE.MathUtils.clamp(effort,.57,1);
@@ -1002,8 +1002,14 @@ function updateRaceAI(r,dt,live,leader){
     const staminaMod=THREE.MathUtils.clamp(1+(96-r.horse.stamina)*.025,.88,1.18);
     const distanceMod=race.distance>=2000?1.0:race.distance>=1600?.82:.68;
     const effortLoad=Math.max(0,r.effort-.58);
-    const leadingEarly=(r===leader&&race.distance-r.distance>650)?1:0;
-    const burn=(effortLoad*.022*staminaMod*distanceMod)+(leadingEarly*.00075*distanceMod);
+    const remainingNow=race.distance-r.distance;
+    const second=leader===r?live.find(o=>o!==r&&!o.finished):null;
+    const leadGap=second?Math.max(0,r.distance-second.distance):0;
+    const leadingEarly=(r===leader&&remainingNow>650)?1:0;
+    const runawayLoad=(r===leader&&remainingNow>350)?THREE.MathUtils.clamp((leadGap-8)/20,0,1.5):0;
+    const burn=(effortLoad*.022*staminaMod*distanceMod)
+      +(leadingEarly*.00075*distanceMod)
+      +(runawayLoad*.0014*distanceMod);
     r.energy=Math.max(.22,r.energy-scaledDt*burn);
 
     if(r.effort<.615){
@@ -1040,15 +1046,15 @@ function targetSpeed(r,live,leader){
   // Ritmo táctico: tras ~40 m aparecen punteros, grupo perseguidor y caballos guardados.
   if(elapsed>=2.30){
     if(r.tactic==='front'){
-      factor*=remaining>700?1.007:remaining>350?1.0025:1.000;
+      factor*=remaining>700?1.004:remaining>350?1.0015:1.000;
     }else if(r.tactic==='closer'){
-      factor*=remaining>900?.988:remaining>650?.995:remaining<650?1.014:1.000;
+      factor*=remaining>900?.9965:remaining>650?.9985:remaining<650?1.012:1.000;
     }else if(r.tactic==='stalker'){
-      factor*=remaining>850?.998:remaining<700?1.006:1.000;
+      factor*=remaining>850?.9995:remaining<700?1.005:1.000;
     }
   }
 
-  const effortSpeed=.79+r.effort*.21;
+  const effortSpeed=.94+r.effort*.06;
   factor*=effortSpeed;
 
   // Con poca reserva el caballo pierde velocidad sostenida y remate.
@@ -1065,17 +1071,23 @@ function targetSpeed(r,live,leader){
     .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&Math.abs(o.lateral-r.lateral)<1.80)
     .sort((a,b)=>a.distance-b.distance)[0];
 
-  const finalAttackDistance=d<=1600?440:575;
+  const finalAttackDistance=d<=1600?460:650;
 
   // No hay filas ni distancias objetivo prefijadas.
   // El grupo se forma de manera natural por ritmo, táctica, terreno y tráfico.
-  // No hay goma elástica para los de atrás.
-  // Si el puntero ha abierto un hueco enorme demasiado pronto, regula el ritmo para guardar.
-  if(!launchPhase&&leader===r&&remaining>700){
+  // Gestión de carrera: una fuga puede existir, pero el líder regula si abre demasiado
+  // y los perseguidores reaccionan antes de dejar que el hueco se convierta en 50-80 metros.
+  if(!launchPhase&&leader===r&&remaining>180){
     const second=live.find(o=>o!==r&&!o.finished);
     const leadGap=second?Math.max(0,r.distance-second.distance):0;
-    if(leadGap>18)factor*=.985;
-    else if(leadGap>10)factor*=.993;
+    if(leadGap>30)factor*=.960;
+    else if(leadGap>22)factor*=.972;
+    else if(leadGap>15)factor*=.982;
+    else if(leadGap>9)factor*=.991;
+  }else if(!launchPhase&&gapToLeader>14&&remaining>150){
+    const urgency=remaining<700?1.35:1.0;
+    const chase=Math.min(.018,(gapToLeader-14)*.00042*urgency);
+    factor*=1+chase*(r.tactic==='closer'?1.08:1.0);
   }
 
   if(nearestAhead){
