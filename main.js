@@ -40,13 +40,13 @@ const horses = [
   ['kildare','Kildare Legend','Salvador Márquez','R. Sousa','stayer',95,97,94,1800,2600,0xa45a31,'#f5f5f5','#d71920','band',{face:'none',socks:[]},'Alazán'],
   ['naranco','Naranco','Yeguada Rocío','V. Janáček','stayer',92,96,91,2200,2650,0x30201b,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño oscuro'],
   ['tetuan','Tetuan','Yeguada Rocío','V. Janáček','stayer',92,97,91,2200,2850,0x402921,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
-  ['shackleton','Shackleton','Yeguada Rocío','I. Melgarejo','stayer',93,97,92,2300,3000,0x814426,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Alazán'],
-  ['pamplona','Pamplona','Yeguada Rocío','V. Janáček','stayer',92,96,91,2200,2850,0x493027,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
+  ['shackleton','Shackleton','Yeguada Rocío','I. Melgarejo','stayer',93,97,92,2300,3000,0x3d2a22,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
+  ['pamplona','Pamplona','Yeguada Rocío','V. Janáček','stayer',92,96,91,2200,2850,0x9a512e,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Alazán'],
   ['ifnotnow','If Not Now','Yeguada Rocío','V. Janáček','intermediate',94,93,94,1850,2350,0x94502f,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Alazán'],
   ['thegame','The Game','Cielo de Madrid','R. Sousa','stayer',94,96,93,2150,2650,0x422920,'#72c9d7','#11181a','quarters',{face:'none',socks:[]},'Castaño'],
   ['mediastorm','Media Storm','Best Horse','B. Fayos','stayer',93,97,91,2300,2750,0x70402a,'#17307e','#ffffff','band',{face:'none',socks:[]},'Alazán'],
   ['elcaney','El Caney','Santa Bárbara','A. Gutiérrez V.','stayer',92,97,91,2250,2850,0x33231e,'#f2d64e','#168154','diagonal',{face:'none',socks:[]},'Castaño oscuro'],
-  ['kingjungle','King of Jungle','Yeguada Rocío','V. Janáček','miler',98,84,98,1200,1600,0x807e78,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Tordo oscuro'],
+  ['kingjungle','King of Jungle','Diaz Sarmiento','R. N. Valle','miler',98,84,98,1200,1600,0x4b3026,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño'],
   ['samedi','Samedi Rien','Yeguada Rocío','V. Janáček','miler',98,84,97,1200,1600,0x5b3427,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]},'Castaño']
 ].map((x,i)=>({
   id:x[0],name:x[1],stable:x[2],preferredJockey:x[3],specialty:x[4],
@@ -68,6 +68,11 @@ const REAL_JCE = {
   sirjan:{
     starts:23,wins:5,placings:9,officialValue:46,
     palmares:['Memorial Duque de Toledo 2024','Prix Max Sicard 2024','2º GP de Madrid 2026','2º Copa de Oro 2026']
+  },
+  viciousharry:{
+    officialValue:44,
+    palmares:['GP Ruban 2024'],
+    note:'Valor oficial JCE 44. Totales de carrera pendientes de cerrar desde su ficha individual.'
   },
   elsokhna:{
     starts:60,wins:9,placings:29,
@@ -99,9 +104,14 @@ const REAL_JCE = {
     palmares:['Rheffissimo 2026','Indian Prince 2026','Victorias en 2.000 m en 2025']
   },
   kingjungle:{
-    starts:35,wins:7,placings:22,
+    starts:35,wins:7,placings:22,officialValue:40,
     palmares:['Especialista de sprint 1.000–1.400 m según historial JCE'],
-    note:'Su ficha real es más de sprinter; mantengo de momento el rango 1.200–1.600 que has pedido para el simulador.'
+    note:'JCE lo muestra como castaño y con historial principalmente de sprint. El rango 1.200–1.600 se mantiene por ahora como ajuste del simulador.'
+  },
+  ifnotnow:{
+    officialValue:41,
+    palmares:['Victoria 2.400 m La Zarzuela 2025','2º GP de San Sebastián 2026'],
+    note:'Valor oficial JCE 41. Totales de carrera pendientes de cerrar desde su ficha individual.'
   },
   samedi:{
     palmares:['GP de la Hispanidad 2024'],
@@ -207,7 +217,7 @@ function renderStatsScreen(){
       : '';
     const realPalmares=real?.palmares?.length
       ? `<div class="real-palmares">${real.palmares.map(x=>`<span>★ ${x}</span>`).join('')}</div>`
-      : '<div class="stats-empty">Pendiente de revisar en Jockey Club.</div>';
+      : '<div class="stats-empty">Totales pendientes de confirmar en la ficha oficial del Jockey Club.</div>';
     return `<article class="stats-card">
       <div class="stats-card-head">
         <div class="coat-dot" style="background:${coat}"></div>
