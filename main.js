@@ -57,65 +57,81 @@ const horses = [
 
 const REAL_JCE = {
   safaga:{
+    peakValue:44.5,
+    peakSource:'histórico',
     palmares:['GP Beamonte · Oaks 2023','GP Román Martín 2023','2ª GP Duque de Alburquerque 2024'],
-    note:'Palmarés principal verificado en resultados oficiales JCE.'
+    note:'Máximo histórico indicado: 44,5.'
   },
   estraunza:{
-    officialValue:43,
+    peakValue:44.5,
+    peakSource:'histórico',
     palmares:['GP Villapadierna · Derby 2025','GP Villamejor 2025'],
-    note:'Ganador de las dos grandes pruebas clásicas españolas de 3 años.'
+    note:'Máximo histórico indicado: 44,5.'
   },
   sirjan:{
-    starts:23,wins:5,placings:9,officialValue:46,
+    peakValue:46,
+    peakSource:'JCE',
     palmares:['Memorial Duque de Toledo 2024','Prix Max Sicard 2024','2º GP de Madrid 2026','2º Copa de Oro 2026']
   },
   viciousharry:{
-    officialValue:44,
+    peakValue:45,
+    peakSource:'histórico',
     palmares:['GP Ruban 2024'],
-    note:'Valor oficial JCE 44. Totales de carrera pendientes de cerrar desde su ficha individual.'
+    note:'Máximo histórico indicado: 45.'
   },
   elsokhna:{
-    starts:60,wins:9,placings:29,
-    palmares:['Ganador en 1.200 m','Ganador en 1.400 m','Ganador en 1.500 m'],
-    note:'Historial JCE muy concentrado entre 1.200 y 1.600 m.'
+    peakValue:41,
+    peakSource:'JCE',
+    palmares:['Actuaciones destacadas entre 1.200 y 1.600 m'],
+    note:'JCE registra actuaciones con valor 41.'
   },
   warofdance:{
-    starts:18,wins:5,placings:12,
+    peakValue:45,
+    peakSource:'JCE',
     palmares:['GP de Madrid 2024','GP de Madrid 2025','Memorial Duque de Toledo 2023','Teresa 2024']
   },
-  coetzee:{
-    starts:15,wins:4,placings:5,
-    palmares:['GP de Madrid 2026','Victoria 2.500 m Saint-Cloud 2026','Victoria 3.100 m Longchamp 2025']
-  },
   kildare:{
-    starts:12,wins:4,placings:5,officialValue:45,
+    peakValue:45,
+    peakSource:'JCE',
     palmares:['Bannaby 2026','3º GP de Madrid 2026']
   },
   tetuan:{
-    starts:17,wins:6,placings:9,officialValue:43,
+    peakValue:44,
+    peakSource:'JCE',
     palmares:['GP Villapadierna · Derby 2024','Gran Premio Nacional 2024','Román Martín 2025','Royal Gait 2025']
   },
   shackleton:{
-    starts:17,wins:1,placings:12,officialValue:43.5,
+    peakValue:44,
+    peakSource:'JCE',
     palmares:['2º Corpa 2026','3º Copa de Oro 2026','4º GP de Madrid 2026']
   },
   pamplona:{
-    starts:25,wins:8,placings:9,
-    palmares:['Rheffissimo 2026','Indian Prince 2026','Victorias en 2.000 m en 2025']
-  },
-  kingjungle:{
-    starts:35,wins:7,placings:22,officialValue:40,
-    palmares:['Especialista de sprint 1.000–1.400 m según historial JCE'],
-    note:'JCE lo muestra como castaño y con historial principalmente de sprint. El rango 1.200–1.600 se mantiene por ahora como ajuste del simulador.'
+    peakValue:46,
+    peakSource:'histórico',
+    palmares:['GP Villamejor','Rheffissimo 2026','Indian Prince 2026'],
+    note:'Máximo histórico indicado: 46.'
   },
   ifnotnow:{
-    officialValue:41,
-    palmares:['Victoria 2.400 m La Zarzuela 2025','2º GP de San Sebastián 2026'],
-    note:'Valor oficial JCE 41. Totales de carrera pendientes de cerrar desde su ficha individual.'
+    peakValue:43,
+    peakSource:'JCE',
+    palmares:['Victoria 2.400 m La Zarzuela 2025','2º GP de San Sebastián 2026']
   },
   samedi:{
-    palmares:['GP de la Hispanidad 2024'],
-    note:'Ganador del Hispanidad sobre 1.600 m; perfil de 1.200–1.600 m.'
+    peakValue:46,
+    peakSource:'JCE',
+    palmares:['GP de la Hispanidad ×3','Gran Premio Gobierno Vasco'],
+    note:'Máximo histórico: 46.'
+  },
+  coetzee:{
+    peakValue:null,
+    estimated:false,
+    palmares:['GP de Madrid 2026','Victoria 2.500 m Saint-Cloud 2026','Victoria 3.100 m Longchamp 2025']
+  },
+  fortun:{
+    peakValue:null,
+    estimated:true,
+    palmares:[],
+    note:'Pendiente de estimar su máximo a partir de sus mejores carreras y rivales.'
   }
 };
 
@@ -212,12 +228,15 @@ function renderStatsScreen(){
     const coat='#'+h.coat.toString(16).padStart(6,'0');
     const recent=(s.last5||[]).map(x=>`<span class="recent-pos p${Math.min(x.pos,4)}">${x.pos}º</span>`).join('')||'<span class="stats-empty">Sin carreras todavía</span>';
     const real=REAL_JCE[h.id];
-    const realNumbers=real&&real.starts!=null
-      ? `<div class="real-numbers"><span><b>${real.starts}</b> carreras</span><span><b>${real.wins}</b> victorias</span><span><b>${real.placings}</b> colocaciones</span>${real.officialValue!=null?`<span><b>${real.officialValue}</b> valor JCE</span>`:''}</div>`
-      : '';
+    const peakText=real?.peakValue!=null
+      ? String(real.peakValue).replace('.',',')
+      : (real?.estimated?'Pendiente':'—');
+    const peakLabel=real?.peakValue!=null
+      ? (real.peakSource==='JCE'?'Máximo JCE':'Máximo histórico')
+      : (real?.estimated?'Máximo estimado':'Valor máximo');
     const realPalmares=real?.palmares?.length
       ? `<div class="real-palmares">${real.palmares.map(x=>`<span>★ ${x}</span>`).join('')}</div>`
-      : '<div class="stats-empty">Totales pendientes de confirmar en la ficha oficial del Jockey Club.</div>';
+      : '<div class="stats-empty">Palmarés pendiente de revisar.</div>';
     return `<article class="stats-card">
       <div class="stats-card-head">
         <div class="coat-dot" style="background:${coat}"></div>
@@ -231,8 +250,11 @@ function renderStatsScreen(){
         <div><span>Ideal</span><b>${h.best[0].toLocaleString('es-ES')}–${h.best[1].toLocaleString('es-ES')} m</b></div>
       </div>
       <div class="real-history">
-        <div class="real-title"><span>HISTORIAL REAL · JOCKEY CLUB</span>${real?.officialValue!=null?`<b>Valor ${real.officialValue}</b>`:''}</div>
-        ${realNumbers}
+        <div class="real-title"><span>HISTORIAL REAL</span></div>
+        <div class="peak-value-row">
+          <span>${peakLabel}</span>
+          <b>${peakText}</b>
+        </div>
         ${realPalmares}
         ${real?.note?`<p>${real.note}</p>`:''}
       </div>
