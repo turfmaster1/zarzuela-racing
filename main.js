@@ -839,7 +839,8 @@ function updateRaceAI(r,dt,live,leader){
     const railSlots=[.35,2.55,4.75,6.95];
     const row=r.packRow||0;
     const col=r.packCol||0;
-    const slotIndex=row===0?0:row===1?Math.min(1,col):Math.min(2,col);
+    const isPaceSetter=r===leader||r===racePaceLeader;
+    const slotIndex=isPaceSetter?0:(row===0?0:row===1?Math.min(1,col):Math.min(2,col));
     const preferredLane=railTarget-insideSign*railSlots[slotIndex];
 
     if(r.nextDecision<=0&&r.laneLock<=0){
@@ -931,7 +932,8 @@ function updateRaceAI(r,dt,live,leader){
   const lateralRate=inFinal?3.25:(turn>.10?2.70:2.30);
   const laneBlend=1-Math.exp(-lateralRate*scaledDt);
   const proposedLateral=THREE.MathUtils.lerp(r.lateral,r.targetLateral,laneBlend);
-  const lateralConflict=runners.some(o=>
+  const launchPhase=elapsed<2.30;
+  const lateralConflict=!launchPhase&&runners.some(o=>
     o!==r&&!o.finished&&
     Math.abs(o.distance-r.distance)<2.35&&
     Math.abs(o.lateral-proposedLateral)<1.35
@@ -979,13 +981,14 @@ function targetSpeed(r,live,leader){
   factor*=effortSpeed;
   factor*=.968+.032*r.energy;
 
+  const launchPhase=elapsed<2.30;
   const gapToLeader=Math.max(0,(leader?.distance||r.distance)-r.distance);
-  const nearestAhead=live
+  const nearestAhead=launchPhase?null:live
     .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&Math.abs(o.lateral-r.lateral)<1.80)
     .sort((a,b)=>a.distance-b.distance)[0];
 
   const finalAttackDistance=d<=1600?440:575;
-  const packPhase=remaining>finalAttackDistance;
+  const packPhase=!launchPhase&&remaining>finalAttackDistance;
   if(packPhase&&racePaceLeader){
     const row=r.packRow||0;
     const col=r.packCol||0;
@@ -1022,15 +1025,23 @@ function targetSpeed(r,live,leader){
     }
   }
 
-  if(r.blocked)factor*=.990;
-  if(r.mustMerge&&d>1200)factor*=.935;
-  else if(r.mergeBlocked&&d>1200)factor*=.968;
+  if(!launchPhase){
+    if(r.blocked)factor*=.990;
+    if(r.mustMerge&&d>1200)factor*=.935;
+    else if(r.mergeBlocked&&d>1200)factor*=.968;
+  }
 
   // El exterior paga la distancia extra durante toda la curva.
   // Solo se neutraliza cuando ya están realmente rectos en la recta final.
   const finalStraight=remaining<(d<=1600?440:575)&&turnIntensityFor(r)<.10;
   if(!finalStraight)factor*=railEfficiencyFor(r);
   else factor*=THREE.MathUtils.lerp(1,railEfficiencyFor(r),.06);
+
+  if(launchPhase){
+    // Apertura de cajones: todos rompen a correr a la vez; las diferencias aparecen después.
+    factor=THREE.MathUtils.lerp(factor,1.0,.72);
+    factor*=1.025;
+  }
 
   const fatigue=progress*progress*Math.max(0,94-h.stamina)*.00056*(d>=2200?1.12:.70)*condition.fatigue;
   factor-=fatigue;
@@ -1078,7 +1089,8 @@ function loop(now){
     const proposedDistance=previousDistance+r.speed*dt*state.raceSpeed;
     // Solo hay bloqueo si otro caballo está CLARAMENTE delante y prácticamente en la misma calle.
     // Los caballos que salen en paralelo desde cajones ya no se frenan entre sí.
-    const closeAhead=runners
+    const launchPhase=elapsed<2.30;
+    const closeAhead=launchPhase?null:runners
       .map(o=>({o,gap:o.distance-previousDistance}))
       .filter(x=>x.o!==r&&!x.o.finished&&x.gap>.85&&x.gap<4.6&&Math.abs(x.o.lateral-r.lateral)<1.35)
       .sort((a,b)=>a.gap-b.gap)[0]?.o;
@@ -1095,7 +1107,7 @@ function loop(now){
   // Cinturón de seguridad final: si dos caballos quedan demasiado juntos en la misma calle,
   // el de atrás se coloca detrás en vez de atravesar el modelo delantero.
   const safetyOrder=[...runners].filter(x=>!x.finished).sort((a,b)=>b.distance-a.distance);
-  for(let i=0;i<safetyOrder.length;i++){
+  if(elapsed>=2.30)for(let i=0;i<safetyOrder.length;i++){
     const front=safetyOrder[i];
     for(let j=i+1;j<safetyOrder.length;j++){
       const back=safetyOrder[j];
