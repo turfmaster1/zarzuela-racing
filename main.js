@@ -771,6 +771,15 @@ function laneFree(r,lane,longitudinalWindow=7.5){
   if(Math.abs(lane)>limit)return false;
   return !runners.some(o=>o!==r&&!o.finished&&Math.abs(o.distance-r.distance)<longitudinalWindow&&Math.abs(o.lateral-lane)<2.05);
 }
+function laneOpenForMove(r,lane){
+  const limit=TRACK_WIDTH/2-2.0;
+  if(Math.abs(lane)>limit)return false;
+  return !runners.some(o=>
+    o!==r&&!o.finished&&
+    Math.abs(o.distance-r.distance)<2.15&&
+    Math.abs(o.lateral-lane)<1.35
+  );
+}
 function interiorSignFor(r){
   const f=THREE.MathUtils.clamp(r.distance/race.distance,0,1);
   const p=route.getPointAtFraction(f),tan=route.getTangentAtFraction(f);
@@ -834,67 +843,60 @@ function updateRaceAI(r,dt,live,leader){
   const inFinal=onFinalStraight;
 
   if(!inFinal){
-    // Durante curvas y recorrido: pelotón compacto junto a la cuerda.
-    // Los slots están medidos desde el rail hacia el exterior.
-    const railSlots=[.35,2.55,4.75,6.95];
-    const row=r.packRow||0;
-    const col=r.packCol||0;
+    // Durante toda la carrera se busca la cuerda, pero sin imponer filas prefijadas.
+    const railSlots=[.35,2.55,4.75,6.95].map(x=>railTarget-insideSign*x);
     const isPaceSetter=r===leader||r===racePaceLeader;
-    const slotIndex=isPaceSetter?0:(row===0?0:row===1?Math.min(1,col):Math.min(2,col));
-    const preferredLane=railTarget-insideSign*railSlots[slotIndex];
 
     if(r.nextDecision<=0&&r.laneLock<=0){
       r.mergeBlocked=false;
       r.mustMerge=false;
 
       if(straightOnly){
-        // 1000/1200 m: no obligamos a buscar cuerda porque el recorrido es recto.
         r.targetLateral=r.lateral;
         r.maneuver='straight-hold';
       }else{
-        const metresFromRail=Math.abs(r.lateral-railTarget);
-        const veryWide=metresFromRail>7.0;
-        const wide=metresFromRail>5.25;
-
-        // Al salir de cajones cerramos más deprisa; después el movimiento es más fino.
-        const mergeStep=r.distance<120?2.45:(turn>.12?2.05:1.80);
-        const desiredLane=stepToward(r.lateral,preferredLane,mergeStep);
-
-        const blockerAhead=live
+        // Caballo delante en nuestra trayectoria actual.
+        const currentBlocker=live
           .filter(o=>o!==r&&!o.finished)
-          .filter(o=>o.distance>r.distance&&o.distance-r.distance<5.2)
-          .sort((a,b)=>a.distance-b.distance)
-          .find(o=>Math.abs(o.lateral-desiredLane)<1.85);
+          .map(o=>({o,gap:o.distance-r.distance,lat:Math.abs(o.lateral-r.lateral)}))
+          .filter(x=>x.gap>.55&&x.gap<7.5&&x.lat<1.55)
+          .sort((a,b)=>a.gap-b.gap)[0];
 
-        if(!blockerAhead&&laneFree(r,desiredLane,4.25)){
-          r.targetLateral=desiredLane;
-          r.maneuver=veryWide?'close-hard':wide?'close-inside':'hold-rail-pack';
-        }else{
-          // Si el interior está ocupado, solo abrimos UNA calle para buscar el hueco.
-          const outwardIndex=Math.min(railSlots.length-1,slotIndex+1);
-          const outwardLane=railTarget-insideSign*railSlots[outwardIndex];
+        // Puntuamos calles: fuerte preferencia interior, pero un hueco limpio manda.
+        const scored=railSlots.map((lane,i)=>{
+          let score=laneOpportunity(r,lane)+[2.20,1.35,.55,-.10][i];
+          if(!laneOpenForMove(r,lane))score-=20;
+          if(Math.abs(lane-r.lateral)<.45)score+=.25;
+          if(isPaceSetter&&i===0)score+=1.25;
+          return {lane,i,score};
+        }).sort((a,b)=>b.score-a.score);
 
-          if(blockerAhead&&laneFree(r,outwardLane,4.0)){
-            r.targetLateral=stepToward(r.lateral,outwardLane,mergeStep*.85);
-            r.maneuver='one-lane-out';
+        if(currentBlocker){
+          // Si vamos más rápido y hay hueco, pasamos: primero por dentro, si no por fuera.
+          const blocker=currentBlocker.o;
+          const inward=scored.filter(x=>Math.abs(x.lane-railTarget)<Math.abs(r.lateral-railTarget))[0];
+          const outward=scored.find(x=>Math.abs(x.lane-railTarget)>Math.abs(r.lateral-railTarget)+.35);
+          const passChoice=(inward&&inward.score>-10)?inward:((outward&&outward.score>-10)?outward:scored[0]);
+
+          if(passChoice&&passChoice.score>-10){
+            r.targetLateral=passChoice.lane;
+            r.maneuver=Math.abs(passChoice.lane-railTarget)<Math.abs(r.lateral-railTarget)?'pass-inside':'pass-outside';
           }else{
-            // Si tampoco hay hueco, se queda detrás: no cruza caballos ni se abre media pista.
-            const smallInward=stepToward(r.lateral,preferredLane,mergeStep*.40);
-            if(laneFree(r,smallInward,3.4)){
-              r.targetLateral=smallInward;
-              r.maneuver='queue-inside';
-            }else{
-              r.targetLateral=r.lateral;
-              r.maneuver='wait-behind';
-              r.mergeBlocked=true;
-              r.mustMerge=veryWide;
-            }
+            r.targetLateral=r.lateral;
+            r.maneuver='wait-behind';
+            r.mergeBlocked=true;
           }
+        }else{
+          // Sin tapón: se va colocando en la mejor calle disponible, normalmente hacia palos.
+          const best=scored[0];
+          const mergeStep=r.distance<140?2.55:(turn>.12?2.15:1.85);
+          r.targetLateral=stepToward(r.lateral,best.lane,mergeStep);
+          r.maneuver=best.i===0?'seek-rail':best.i===1?'rail-second':'find-gap';
         }
       }
 
-      r.laneLock=(r.mustMerge?.24:.50)+Math.random()*.14;
-      r.nextDecision=(r.mustMerge?.18:.30)+Math.random()*.13;
+      r.laneLock=.24+Math.random()*.12;
+      r.nextDecision=.18+Math.random()*.12;
     }
   }else if(!r.finalMoveChosen){
     // Recta final: aquí sí se abre el abanico buscando una salida limpia.
@@ -955,16 +957,8 @@ const packOrder=[racePaceLeader,...runners.filter(x=>x!==racePaceLeader).sort((a
 })];
 packOrder.forEach((runner,i)=>{
   runner.packSlot=i;
-  if(i===0){
-    runner.packRow=0;runner.packCol=0;
-  }else if(i<=2){
-    // Dos perseguidores: primera y segunda calle desde la cuerda.
-    runner.packRow=1;runner.packCol=i-1;
-  }else{
-    // Resto: filas de tres, siempre priorizando las tres calles interiores.
-    runner.packRow=2+Math.floor((i-3)/3);
-    runner.packCol=(i-3)%3;
-  }
+  runner.packRow=0;
+  runner.packCol=0;
 });
 createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$('loadOverlay').classList.add('hidden');startTime=performance.now();last=performance.now();raf=requestAnimationFrame(loop);}
 
@@ -988,28 +982,11 @@ function targetSpeed(r,live,leader){
     .sort((a,b)=>a.distance-b.distance)[0];
 
   const finalAttackDistance=d<=1600?440:575;
-  const packPhase=!launchPhase&&remaining>finalAttackDistance;
-  if(packPhase&&racePaceLeader){
-    const row=r.packRow||0;
-    const col=r.packCol||0;
-    // Pelotón escalonado: puntero, dos cerca detrás y luego filas separadas.
-    let desiredGap=0;
-    if(row===1)desiredGap=2.65+col*.75;
-    else if(row>=2)desiredGap=5.85+(row-2)*3.75+col*.45;
-    const actualGap=racePaceLeader.distance-r.distance;
 
-    if(r===racePaceLeader){
-      const second=live.find(o=>o!==r);
-      if(second&&r.distance-second.distance>2.8)factor*=.984;
-      else factor*=1.003;
-    }else{
-      const error=actualGap-desiredGap;
-      if(error>0)factor*=1+Math.min(.055,error*.010);
-      else factor*=1-Math.min(.050,Math.abs(error)*.011);
-      if(r.distance>racePaceLeader.distance-.65)factor*=.945;
-    }
-  }else if(remaining>220){
-    if(gapToLeader>6)factor*=1+Math.min(.020,(gapToLeader-6)*.0008);
+  // No hay filas ni distancias objetivo prefijadas.
+  // El grupo se forma de manera natural por ritmo, táctica, terreno y tráfico.
+  if(!launchPhase&&remaining>220&&gapToLeader>12){
+    factor*=1+Math.min(.010,(gapToLeader-12)*.00035);
   }
 
   if(nearestAhead){
@@ -1018,10 +995,10 @@ function targetSpeed(r,live,leader){
       factor*=1.006;
       r.energy=Math.min(1,r.energy+.0005);
     }
-    if(draftGap<2.2&&Math.abs(nearestAhead.lateral-r.lateral)<1.70){
-      factor*=.925;
-    }else if(draftGap<4.0&&Math.abs(nearestAhead.lateral-r.lateral)<1.70){
-      factor*=.970;
+    if(draftGap<1.55&&Math.abs(nearestAhead.lateral-r.lateral)<1.35){
+      factor*=.975;
+    }else if(draftGap<3.0&&Math.abs(nearestAhead.lateral-r.lateral)<1.35){
+      factor*=.992;
     }
   }
 
@@ -1092,10 +1069,10 @@ function loop(now){
     const launchPhase=elapsed<2.30;
     const closeAhead=launchPhase?null:runners
       .map(o=>({o,gap:o.distance-previousDistance}))
-      .filter(x=>x.o!==r&&!x.o.finished&&x.gap>.85&&x.gap<4.6&&Math.abs(x.o.lateral-r.lateral)<1.35)
+      .filter(x=>x.o!==r&&!x.o.finished&&x.gap>.70&&x.gap<2.65&&Math.abs(x.o.lateral-r.lateral)<1.20)
       .sort((a,b)=>a.gap-b.gap)[0]?.o;
     if(closeAhead){
-      const safeGap=2.35;
+      const safeGap=1.85;
       const maxAllowed=Math.max(previousDistance,closeAhead.distance-safeGap);
       r.distance=Math.min(proposedDistance,maxAllowed);
     }else{
@@ -1112,9 +1089,9 @@ function loop(now){
     for(let j=i+1;j<safetyOrder.length;j++){
       const back=safetyOrder[j];
       const gap=front.distance-back.distance;
-      if(Math.abs(front.lateral-back.lateral)<1.30&&gap>.70&&gap<2.35){
-        back.distance=Math.max(0,front.distance-2.35);
-        back.speed=Math.min(back.speed,front.speed*.992);
+      if(Math.abs(front.lateral-back.lateral)<1.15&&gap>.55&&gap<1.85){
+        back.distance=Math.max(0,front.distance-1.85);
+        back.speed=Math.min(back.speed,front.speed*.995);
       }
     }
   }
