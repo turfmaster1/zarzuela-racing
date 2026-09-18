@@ -26,6 +26,10 @@ const horses = [
   ['estraunza','Estraunza','Becares','A. Gutiérrez V.','stayer',92,98,93,2250,2850,0x8b4325,'#f05a18','#1746b8','stripes',{face:'none',socks:[]}],
   ['sirjan','Sirjan','Cum Laude Racing','J. Gelabert','stayer',92,99,91,2300,3100,0x211512,'#1746b8','#f05a18','stripes',{face:'blaze',socks:[]}],
   ['elsokhna','El Sokhna','Becares','A. Gutiérrez V.','intermediate',91,93,92,1800,2400,0xa65a32,'#f05a18','#1746b8','stripes',{face:'stripe',socks:[]}],
+  ['presidency','Presidency','Presidency','V. Janáček','sprinter',97,82,97,1000,1400,0x593326,'#d71920','#ffffff','band',{face:'none',socks:[]}],
+  ['viciousharry','Vicious Harry','Vicious Harry','R. Sousa','sprinter',98,82,98,1000,1400,0x8a4d2c,'#f5f5f5','#2458b8','stripes',{face:'none',socks:[]}],
+  ['greatprospector','Great Prospector','Great Prospector','B. Fayos','sprinter',99,81,99,1000,1400,0x4f3026,'#17305f','#f5f5f5','band',{face:'none',socks:[]}],
+  ['rodaballo','Rodaballo','Rodaballo','J. L. Martínez','miler',98,88,99,1400,1800,0x30231f,'#08796d','#54c97b','quarters',{face:'star',socks:[]}],
   ['fortun','Fortun','La Toledana','B. Fayos','intermediate',94,94,92,1800,2450,0x6a3421,'#090a0b','#090a0b','solid',{face:'none',socks:[]}],
   ['entrecopas','Entre Copas','Cuadra África','J. L. Martínez','stayer',89,100,86,2400,4000,0x9c5731,'#aa2431','#f2d66a','band',{face:'none',socks:[]}],
   ['amedeo','Amedeo Modigliani','Yeguada Rocío','V. Janáček','miler',98,84,97,1450,1800,0x4b2b20,'#f5f5ef','#0d5c3d','stars',{face:'none',socks:[]}],
@@ -241,6 +245,7 @@ function addHorseMarkings(root,h,box,size){
   const markings=h.markings||{face:'none',socks:[]};
   if(markings.face==='none'&&(!markings.socks||!markings.socks.length))return;
   const white=new THREE.MeshLambertMaterial({color:0xf6f5ee});
+  const legBlack=new THREE.MeshLambertMaterial({color:0x171310});
   const center=new THREE.Vector3();box.getCenter(center);
   const frontZ=box.max.z-.035;
   if(markings.face&&markings.face!=='none'){
@@ -270,7 +275,7 @@ function addHorseMarkings(root,h,box,size){
   };
   (markings.socks||[]).forEach(key=>{
     const p=sockMap[key];if(!p)return;
-    const sock=new THREE.Mesh(new THREE.CylinderGeometry(Math.max(.035,size.x*.035),Math.max(.038,size.x*.040),Math.max(.16,size.y*.16),8),white);
+    const sock=new THREE.Mesh(new THREE.CylinderGeometry(Math.max(.035,size.x*.035),Math.max(.038,size.x*.040),Math.max(.16,size.y*.16),8),legBlack);
     sock.position.set(p[0],box.min.y+Math.max(.09,size.y*.085),p[1]);
     root.add(sock);
   });
@@ -285,7 +290,8 @@ function makeRunner(h){
     const objectName=(o.name||'').toLowerCase();
     for(const mat of mats){
       const name=(mat?.name||'').toLowerCase();
-      if(name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x171310);mat.map=null;mat.needsUpdate=true;}
+      const horseLeg=/leg|limb|fetlock|pastern|cannon|sock/.test(name+' '+objectName);
+      if(horseLeg||name.includes('hoof')||objectName.includes('hoof')){setMaterialColor(mat,0x171310);mat.map=null;mat.needsUpdate=true;}
       else if(name.includes('horse.body.pattern')){setMaterialColor(mat,h.coat);mat.map=null;mat.normalMap=null;mat.roughnessMap=null;mat.metalnessMap=null;mat.roughness=.9;mat.metalness=0;mat.needsUpdate=true;}
       else if(name.includes('jockey_silk_main')||name.includes('jockey_silk_primary')){mat.map=jockeySilkTexture;setMaterialColor(mat,0xffffff);mat.needsUpdate=true;}
       else if(name.includes('jockey_silk_secondary'))setMaterialColor(mat,h.id==='safaga'?h.silk:h.accent);
