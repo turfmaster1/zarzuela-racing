@@ -302,7 +302,7 @@ function effortFor(r){
     else if(remaining>300)effort=.76+((550-remaining)/250)*.16;
     else effort=.93+((300-remaining)/300)*.07;
   }
-  if(r.tactic==='front'&&remaining>(d<=1600?520:600))effort+=.045;
+  if(r.tactic==='front'&&remaining>(d<=1600?520:600))effort+=.020;
   if(r.tactic==='closer'&&remaining<500)effort+=.035;
   if(r.tactic==='stalker'&&remaining<650)effort+=.018;
   return THREE.MathUtils.clamp(effort,.60,1);
@@ -310,17 +310,17 @@ function effortFor(r){
 function laneFree(r,lane){
   const limit=TRACK_WIDTH/2-2.0;
   if(Math.abs(lane)>limit)return false;
-  return !runners.some(o=>o!==r&&!o.finished&&Math.abs(o.distance-r.distance)<7.5&&Math.abs(o.lateral-lane)<1.35);
+  return !runners.some(o=>o!==r&&!o.finished&&Math.abs(o.distance-r.distance)<6.2&&Math.abs(o.lateral-lane)<1.28);
 }
 function updateRaceAI(r,dt){
   const scaledDt=dt*state.raceSpeed;
   r.nextDecision-=scaledDt;
   const remaining=race.distance-r.distance;
   if(r.nextDecision<=0){
-    const blockers=runners.filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&o.distance-r.distance<8&&Math.abs(o.lateral-r.lateral)<1.45).sort((a,b)=>a.distance-b.distance);
+    const blockers=runners.filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&o.distance-r.distance<11&&Math.abs(o.lateral-r.lateral)<1.70).sort((a,b)=>a.distance-b.distance);
     r.blocked=blockers.length>0;
     if(r.blocked){
-      const step=2.35;
+      const step=2.05;
       const first=r.passSide>0?r.lateral+step:r.lateral-step;
       const second=r.passSide>0?r.lateral-step:r.lateral+step;
       if(laneFree(r,first))r.targetLateral=first;
@@ -328,7 +328,7 @@ function updateRaceAI(r,dt){
       else r.targetLateral=r.lateral;
       r.passSide*=-1;
     }else if(remaining<650){
-      const step=2.1;
+      const step=1.95;
       const options=[r.lateral,r.lateral+r.passSide*step,r.lateral-r.passSide*step].filter(v=>laneFree(r,v));
       if(options.length>1){
         options.sort((a,b)=>{
@@ -351,22 +351,46 @@ function updateRaceAI(r,dt){
 }
 function placeRunner(r,gatePose=false){const fraction=THREE.MathUtils.clamp(r.distance/race.distance,0,1),p=route.getPointAtFraction(fraction),tan=route.getTangentAtFraction(fraction),side=new THREE.Vector3(-tan.z,0,tan.x).normalize();const target=p.clone().addScaledVector(side,r.lateral);if(gatePose)target.addScaledVector(tan,-1.25);target.y=.05;r.root.position.copy(target);r.root.rotation.y=Math.atan2(tan.x,tan.z);}
 
-async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';state.raceSpeed=1;state.cameraMode=0;state.paused=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(2.25,(TRACK_WIDTH-2)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,passSide:i%2?1:-1,finished:false,time:null,form:(Math.random()-.5)*.008,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$('loadOverlay').classList.add('hidden');startTime=performance.now();last=performance.now();raf=requestAnimationFrame(loop);}
+async function startRace(field,r){await init3D();cancelAnimationFrame(raf);runners.forEach(x=>{scene.remove(x.root);x.mixer.stopAllAction();});runners=[];clearGates();race=r;route=buildRoute(r.distance);running=false;finished=false;elapsed=0;finishOrder=[];snapshot='';state.raceSpeed=1;state.cameraMode=0;state.paused=false;if(orbitControls)orbitControls.enabled=false;$('speedBtn').textContent='x1';$('cameraBtn').textContent='Cámara TV';if($('pauseBtn')){$('pauseBtn').textContent='Pausa';$('pauseBtn').disabled=true;}if($('startRaceBtn')){$('startRaceBtn').classList.add('show');$('startRaceBtn').disabled=false;}$('countdown').textContent='';$('finishFlash').classList.remove('show');$('tvRaceTitle').textContent=r.name.toUpperCase();$('tvVenue').textContent=r.venue;$('commentary').textContent='Participantes cargados. Pulsa DAR LA SALIDA cuando quieras.';const assigned=assignJockeys(field);fieldAbility=assigned.reduce((s,h)=>s+ability(h,r.distance),0)/assigned.length;const spacing=Math.min(1.82,(TRACK_WIDTH-4)/assigned.length);assigned.forEach((h,i)=>{const rig=makeRunner(h),runner={...rig,horse:h,distance:0,speed:0,lateral:(i-(assigned.length-1)/2)*spacing,targetLateral:(i-(assigned.length-1)/2)*spacing,startLateral:(i-(assigned.length-1)/2)*spacing,energy:1,effort:.7,tactic:tacticFor(h),blocked:false,nextDecision:.15+Math.random()*.25,passSide:i%2?1:-1,finished:false,time:null,form:(Math.random()-.5)*.004,phase:Math.random()*6.28};scene.add(runner.root);placeRunner(runner,true);runners.push(runner);});createStartingGates(assigned.length);state.lastField=field;show('raceScreen');$('loadOverlay').classList.add('hidden');startTime=performance.now();last=performance.now();raf=requestAnimationFrame(loop);}
 
 function targetSpeed(r){
   const d=race.distance,h=r.horse,progress=r.distance/d,remaining=d-r.distance;
   const base=d<=1200?17.8:d<=1600?17.35:d<=2000?17.0:d<=2500?16.65:16.3;
-  let factor=(1+(ability(h,d)-fieldAbility)*.00155)*(1+(distanceFit(h,d)-.98)*.62)*(1+r.form);
+  let factor=(1+(ability(h,d)-fieldAbility)*.00110)*(1+(distanceFit(h,d)-.98)*.38)*(1+r.form);
   const effortSpeed=.79+r.effort*.21;
   factor*=effortSpeed;
-  factor*=.965+.035*r.energy;
-  if(r.blocked)factor*=.978;
-  const fatigue=progress*progress*Math.max(0,94-h.stamina)*.00062*(d>=2200?1.18:.72);
+  factor*=.968+.032*r.energy;
+
+  const live=sorted();
+  const leader=live[0];
+  const gapToLeader=Math.max(0,(leader?.distance||r.distance)-r.distance);
+  const nearestAhead=live
+    .filter(o=>o!==r&&!o.finished&&o.distance>r.distance&&Math.abs(o.lateral-r.lateral)<2.1)
+    .sort((a,b)=>a.distance-b.distance)[0];
+
+  if(remaining>380){
+    if(gapToLeader>7)factor*=1+Math.min(.017,(gapToLeader-7)*.00055);
+    if(r===leader&&live[1]&&r.distance-live[1].distance>5)factor*=.994;
+  }
+
+  if(nearestAhead){
+    const draftGap=nearestAhead.distance-r.distance;
+    if(draftGap>3&&draftGap<12){
+      factor*=1.006;
+      r.energy=Math.min(1,r.energy+.0005);
+    }
+    if(draftGap<3.8&&Math.abs(nearestAhead.lateral-r.lateral)<1.45){
+      factor*=.985;
+    }
+  }
+
+  if(r.blocked)factor*=.990;
+  const fatigue=progress*progress*Math.max(0,94-h.stamina)*.00056*(d>=2200?1.12:.70);
   factor-=fatigue;
   if(remaining<300)factor*=1+(1-remaining/300)*(h.accel-88)*.00135;
-  factor*=1+Math.sin(elapsed*.9+r.phase)*.0015;
-  const min=h.specialty==='sprinter'&&d>=2400?.89:.90;
-  return base*THREE.MathUtils.clamp(factor,min,1.065);
+  factor*=1+Math.sin(elapsed*.9+r.phase)*.0012;
+  const min=h.specialty==='sprinter'&&d>=2400?.90:.91;
+  return base*THREE.MathUtils.clamp(factor,min,1.055);
 }
 function loop(now){
   const dt=Math.min(.04,(now-last)/1000||.016);last=now;
