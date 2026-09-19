@@ -24,6 +24,7 @@ const JOCKEYS = [
 const horses = [
   ['safaga','Safaga','Asoc. La Toledana–Becares','G. Trolley de Prévaux','intermediate',95,95,96,1800,2400,0x17100e,'#08090a','#20c9c3','chestcross',{face:'none',socks:[]},'Castaño muy oscuro'],
   ['estraunza','Estraunza','Becares','A. Gutiérrez V.','stayer',94,98,94,2400,2800,0x2b1a15,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Castaño oscuro'],
+  ['ribat','Ribat (FR)','Becares','I. Melgarejo','miler',92,84,93,1300,1600,0x4a2d22,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Castaño'],
   ['sirjan','Sirjan','Cum Laude Racing','J. Gelabert','stayer',96,100,95,2200,3000,0x733b24,'#1746b8','#f05a18','stripes',{face:'none',socks:[]},'Castaño rojizo'],
   ['elsokhna','El Sokhna','Becares','A. Gutiérrez V.','miler',93,84,93,1200,1600,0x8e4a2c,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Alazán'],
   ['presidency','Presidency','Presidency','V. Janáček','sprinter',99,81,99,1000,1400,0x4b2d23,'#d71920','#ffffff','band',{face:'none',socks:[]},'Castaño'],
@@ -67,6 +68,15 @@ const REAL_JCE = {
     peakSource:'histórico',
     palmares:['GP Villapadierna · Derby 2025','GP Villamejor 2025'],
     note:'Máximo histórico indicado: 44,5.'
+  },
+  ribat:{
+    peakValue:null,
+    estimated:false,
+    palmares:[
+      '2º debut · 1.300 m · San Sebastián 05/07/2026 · a 1/2 cuerpo',
+      '3º Critérium Nacional M.A.P.A. · 1.400 m · San Sebastián 02/08/2026'
+    ],
+    note:'Potro de 2 años de Becares, preparado por Ch. Delcher. Bow Creek × Red Naomi (Tamayuz). Aún sin valor oficial JCE: la tabla de 2 años exige al menos 3 carreras. Stats de juego provisionales hasta tener más actuaciones.'
   },
   sirjan:{
     peakValue:46,
@@ -237,6 +247,7 @@ const TRACK_CONDITION = {
 const TERRAIN_PROFILE = {
   safaga:{hard:.993,normal:1.004,heavy:1.012},
   estraunza:{hard:1.008,normal:1.005,heavy:.997},
+  ribat:{hard:1.000,normal:1.000,heavy:1.000},
   sirjan:{hard:.997,normal:1.004,heavy:1.012},
   fortun:{hard:.995,normal:1.003,heavy:1.012},
   entrecopas:{hard:.992,normal:1.002,heavy:1.016},
@@ -742,6 +753,7 @@ function animateGates(dt){if(!gateGroup?.userData.opening)return;gateGroup.userD
 const RACE_STYLE = {
   safaga:'stalker',
   estraunza:'closer',
+  ribat:'stalker',
   sirjan:'closer',
   fortun:'stalker',
   entrecopas:'closer',
