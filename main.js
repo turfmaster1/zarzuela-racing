@@ -17,14 +17,14 @@ const SPECIALTY = {
 const JOCKEYS = [
   'V. Janáček','R. Sousa','J. Gelabert','B. Fayos','A. Gutiérrez V.',
   'G. Trolley de Prévaux','J. L. Martínez','E. Corallo','J. Grosjean',
-  'R. N. Valle','N. de Julián','I. Melgarejo','A. Werlé','C. Cadel',
+  'R. N. Valle','N. de Julián','I. Melgarejo','J. Plateaux','A. Werlé','C. Cadel',
   'J. Gómez','D. Sikorova','R. Ramos','J. L. Borrego'
 ];
 
 const horses = [
   ['safaga','Safaga','Asoc. La Toledana–Becares','G. Trolley de Prévaux','intermediate',95,95,96,1800,2400,0x17100e,'#08090a','#20c9c3','chestcross',{face:'none',socks:[]},'Castaño muy oscuro'],
   ['estraunza','Estraunza','Becares','A. Gutiérrez V.','stayer',94,98,94,2400,2800,0x2b1a15,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Castaño oscuro'],
-  ['ribat','Ribat (FR)','Becares','I. Melgarejo','miler',92,84,93,1300,1600,0x4a2d22,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Castaño'],
+  ['ribat','Ribat (FR)','Becares','J. Plateaux','miler',92,84,93,1300,1600,0x4a2d22,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Castaño'],
   ['sirjan','Sirjan','Cum Laude Racing','J. Gelabert','stayer',96,100,95,2200,3000,0x733b24,'#1746b8','#f05a18','stripes',{face:'none',socks:[]},'Castaño rojizo'],
   ['elsokhna','El Sokhna','Becares','A. Gutiérrez V.','miler',93,84,93,1200,1600,0x8e4a2c,'#f05a18','#1746b8','stripes',{face:'none',socks:[]},'Alazán'],
   ['presidency','Presidency','Presidency','V. Janáček','sprinter',99,81,99,1000,1400,0x4b2d23,'#d71920','#ffffff','band',{face:'none',socks:[]},'Castaño'],
